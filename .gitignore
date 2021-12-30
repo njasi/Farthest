@@ -1,2 +1,3 @@
 config.json
 test.txt
+src/__pycache__/*
