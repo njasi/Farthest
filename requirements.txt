@@ -1,2 +1,3 @@
 python-telegram-bot
 youtube_dl
+python-vlc
