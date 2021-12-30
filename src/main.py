@@ -2,7 +2,10 @@ import json
 import re
 import logging
 import youtube_dl
-import requests
+import time
+import urllib
+
+
 from youtube_dl import YoutubeDL
 from Audio import AudioQueue, AudioValue
 from telegram import Update
@@ -17,7 +20,7 @@ ydl_opts = {
 youtube_dl_manager = youtube_dl.YoutubeDL(ydl_opts)
 
 
-f = open(src+ "/../config.json", "r")
+f = open(src + "/../config.json", "r")
 config = json.load(f)
 f.close()
 
@@ -46,6 +49,17 @@ def start(update: Update, context: CallbackContext):
     context.bot.send_message(
         chat_id=update.effective_chat.id,
         text="I'm a bot, please talk to me!")
+
+
+def handler_handler(handler):
+    # garbage filter to avoid crashing
+    def callback(update: Update, context: CallbackContext):
+        try:
+            handler(update, context)
+        except Exception as e:
+            updater.bot.send_message(
+                chat_id=config["admins"][0], text=e.__str__())
+    return callback
 
 
 def add_callback(update: Update, context: CallbackContext):
@@ -194,16 +208,36 @@ def queue_callback(update: Update, context: CallbackContext):
 
 def init_handlers():
     # setup all handlers
-    dispatcher.add_handler(CommandHandler('start', start))
-    dispatcher.add_handler(CommandHandler(['add', 'a'], add_callback))
-    dispatcher.add_handler(CommandHandler('pause', pause_callback))
-    dispatcher.add_handler(CommandHandler('play', play_callback))
-    dispatcher.add_handler(CommandHandler('skip', skip_callback))
-    dispatcher.add_handler(CommandHandler(['queue', 'q'], queue_callback))
-    dispatcher.add_handler(CommandHandler(['volume', 'v'], volume_callback))
-    dispatcher.add_handler(CommandHandler('mute', mute_callback))
+    dispatcher.add_handler(CommandHandler(
+        ['add', 'a'], handler_handler(add_callback)))
+    dispatcher.add_handler(CommandHandler(
+        'pause', handler_handler(pause_callback)))
+    dispatcher.add_handler(CommandHandler(
+        'play', handler_handler(play_callback)))
+    dispatcher.add_handler(CommandHandler(
+        'skip', handler_handler(skip_callback)))
+    dispatcher.add_handler(CommandHandler(
+        ['queue', 'q'], handler_handler(queue_callback)))
+    dispatcher.add_handler(CommandHandler(
+        ['volume', 'v'], handler_handler(volume_callback)))
+    dispatcher.add_handler(CommandHandler(
+        'mute', handler_handler(mute_callback)))
 
+# cursed connection check
+def connect():
+    try:
+        urllib.request.urlopen('http://google.com')
+        return True
+    except:
+        return False
 
 if __name__ == "__main__":
     init_handlers()
-    updater.start_polling()
+    while True:
+        if connect():
+            print("connected")
+            updater.start_polling()
+            break
+        else:
+            print("retry in 5")
+            time.sleep(5)
