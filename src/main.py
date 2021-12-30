@@ -8,6 +8,8 @@ from Audio import AudioQueue, AudioValue
 from telegram import Update
 from telegram.ext import Filters, Updater
 from telegram.ext import CallbackContext, CommandHandler, MessageHandler
+import os
+src = os.path.dirname(os.path.realpath(__file__))
 
 ydl_opts = {
     'quiet': True
@@ -15,7 +17,7 @@ ydl_opts = {
 youtube_dl_manager = youtube_dl.YoutubeDL(ydl_opts)
 
 
-f = open("config.json", "r")
+f = open(src+ "/../config.json", "r")
 config = json.load(f)
 f.close()
 

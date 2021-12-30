@@ -2,7 +2,9 @@ import vlc
 import json
 import youtube_dl
 import datetime
+import os
 from youtube_dl import YoutubeDL
+src = os.path.dirname(os.path.realpath(__file__))
 
 # TODO figure out why this doesnt work
 ydl_opts = {
@@ -11,7 +13,8 @@ ydl_opts = {
 youtube_dl_manager = youtube_dl.YoutubeDL(ydl_opts)
 
 
-f = open("config.json", "r")
+
+f = open(src+ "/../config.json", "r")
 config = json.load(f)
 FARTHER_CHAT = config["farther_chat_id"]
 FARTHER_CHANNEL = config["farther_channel_id"]
