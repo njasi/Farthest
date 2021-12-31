@@ -99,7 +99,6 @@ class AudioQueue:
                 text="The queue is now empty. use /add to add things.", chat_id=FARTHER_CHAT)
             return
 
-        print(self.queue)
         next = self.queue.pop(0)
         next.send(self.bot, now=True)
 
