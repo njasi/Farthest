@@ -54,11 +54,11 @@ def start(update: Update, context: CallbackContext):
 def handler_handler(handler):
     # garbage filter to avoid crashing
     def callback(update: Update, context: CallbackContext):
-        try:
-            handler(update, context)
-        except Exception as e:
-            updater.bot.send_message(
-                chat_id=config["admins"][0], text=e.__str__())
+        # try:
+        handler(update, context)
+        # except Exception as e:
+        #     updater.bot.send_message(
+        #         chat_id=config["admins"][0], text=e.__str__())
     return callback
 
 
@@ -92,7 +92,7 @@ def add_callback(update: Update, context: CallbackContext):
             video_info["title"],
             update.message.from_user.full_name,
             video_info["duration"],
-            update.message.from_user.id),
+            update.message.from_user.id)
         QUEUE.add_audio(audio)
 
     else:
@@ -224,12 +224,15 @@ def init_handlers():
         'mute', handler_handler(mute_callback)))
 
 # cursed connection check
+
+
 def connect():
     try:
-        urllib.request.urlopen('http://google.com')
+        urllib.request.urlopen('http://www.google.com')
         return True
     except:
         return False
+
 
 if __name__ == "__main__":
     init_handlers()
