@@ -71,14 +71,16 @@ def add_callback(update: Update, context: CallbackContext):
         usage()
         return
 
-    match = re.match(YOUTUBE_REGEX, context.args[0])
-    if match:
+    yt_match = re.match(YOUTUBE_REGEX, context.args[0])
+    # sp_match = re.match(SPOTIFY_REGEX, context.args[0])
+    # raw_match = re.match(RAW_MATCH, context.args[0])
+    if yt_match:
         options = {
             'format': 'worstaudio/worst',
             'keepvideo': False,
         }
         video_info = YoutubeDL(options).extract_info(
-            url=match.group(0),
+            url=yt_match.group(0),
             download=False
         )
 
@@ -87,7 +89,7 @@ def add_callback(update: Update, context: CallbackContext):
         # file.close()
 
         audio = AudioValue(
-            match.group(0),
+            yt_match.group(0),
             video_info["thumbnail"],
             video_info["title"],
             update.message.from_user.full_name,
@@ -108,6 +110,8 @@ def add_callback(update: Update, context: CallbackContext):
             video_info["duration"],
             update.message.from_user.id)
         QUEUE.add_audio(audio)
+    # elif
+
 
 
 def spotify():
@@ -223,12 +227,11 @@ def init_handlers():
     dispatcher.add_handler(CommandHandler(
         'mute', handler_handler(mute_callback)))
 
-# cursed connection check
-
 
 def connect():
+    # cursed connection check
     try:
-        urllib.request.urlopen('http://www.google.com')
+        urllib.request.urlopen('https://www.google.com')
         return True
     except:
         return False
