@@ -101,7 +101,7 @@ def handler_handler(handler):
     def callback(update: Update, context: CallbackContext):
         try:
             admin = str(update.message.from_user.id) in config["admins"]
-            if not admin and update.effective_chat.id != config["farther_chat_id"]:
+            if not admin and not str(update.effective_chat.id) == config["farther_chat_id"]:
                 context.bot.send_message(chat_id=update.effective_chat.id,
                                          text="You can only use this bot in the Farthest chat.")
                 return
