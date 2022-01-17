@@ -294,17 +294,15 @@ def connect():
 
 
 if __name__ == "__main__":
-    print(is_quiet_hour())
-
-    # init_handlers()
-    # quiet_thread = threading.Thread(target=quiet_wrapper,)
-    # quiet_thread.start()
-    # print("Checking network connection...")
-    # while True:
-    #     if connect():
-    #         print("\tConnected")
-    #         updater.start_polling()
-    #         break
-    #     else:
-    #         print("\tretry in 5")
-    #         time.sleep(5)
+    init_handlers()
+    quiet_thread = threading.Thread(target=quiet_wrapper,)
+    quiet_thread.start()
+    print("Checking network connection...")
+    while True:
+        if connect():
+            print("\tConnected")
+            updater.start_polling()
+            break
+        else:
+            print("\tretry in 5")
+            time.sleep(5)
