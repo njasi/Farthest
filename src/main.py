@@ -48,12 +48,11 @@ def is_quiet_hour():
     start = datetime.today()
     end = datetime.today()
     if day in [0, 1, 2, 3, 4]:
-        start.replace(hour=0, minute=0)
-        end.replace(hour=7, minute=0)
+        start = now.replace(hour=0, minute=0)
+        end = now.replace(hour=7, minute=0)
     else:
-        start.replace(hour=2, minute=0)
-        end.replace(hour=7, minute=0)
-
+        start = now.replace(hour=2, minute=0)
+        end = now.replace(hour=7, minute=0)
     return start <= now and now <= end
 
 
@@ -295,15 +294,17 @@ def connect():
 
 
 if __name__ == "__main__":
-    init_handlers()
-    quiet_thread = threading.Thread(target=quiet_wrapper,)
-    quiet_thread.start()
-    print("Checking network connection...")
-    while True:
-        if connect():
-            print("\tConnected")
-            updater.start_polling()
-            break
-        else:
-            print("\tretry in 5")
-            time.sleep(5)
+    print(is_quiet_hour())
+
+    # init_handlers()
+    # quiet_thread = threading.Thread(target=quiet_wrapper,)
+    # quiet_thread.start()
+    # print("Checking network connection...")
+    # while True:
+    #     if connect():
+    #         print("\tConnected")
+    #         updater.start_polling()
+    #         break
+    #     else:
+    #         print("\tretry in 5")
+    #         time.sleep(5)
