@@ -4,7 +4,9 @@ import logging
 import youtube_dl
 import time
 import urllib
-
+import socket
+import threading
+from datetime import datetime
 
 from youtube_dl import YoutubeDL
 from Audio import AudioQueue, AudioValue
@@ -40,6 +42,49 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 QUEUE = AudioQueue(updater.bot)
 
 
+def is_quiet_hour():
+    now = datetime.today()
+    day = now.weekday()
+    start = datetime.today()
+    end = datetime.today()
+    if day in [0, 1, 2, 3, 4]:
+        start.replace(hour=0, minute=0)
+        end.replace(hour=7, minute=0)
+    else:
+        start.replace(hour=2, minute=0)
+        end.replace(hour=7, minute=0)
+
+    return start <= now and now <= end
+
+
+HOST = '127.0.0.1'  # Standard loopback interface address (localhost)
+PORT = 65432        # Port to listen on (non-privileged ports are > 1023)
+
+# garbage socket listener for quiet hour start
+
+
+def quiet_wrapper():
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind((HOST, PORT))
+        s.listen()
+
+        while True:
+            conn, addr = s.accept()
+            with conn:
+                if addr[0] == "127.0.0.1":
+                    while True:
+                        data = conn.recv(1024)
+                        if data == b"sush":
+                            conn.sendall(data)
+                            QUEUE.set_volume(0)
+                            break
+                        elif data == b"wake" and not is_quiet_hour():
+                            conn.sendall(data)
+                            QUEUE.set_volume(20)
+                            break
+                        break
+
+
 def usage_dispatcher(message, update):
     return lambda: updater.bot.send_message(chat_id=update.effective_chat.id, text=message, parse_mode="HTML")
 
@@ -54,11 +99,16 @@ def start(update: Update, context: CallbackContext):
 def handler_handler(handler):
     # garbage filter to avoid crashing
     def callback(update: Update, context: CallbackContext):
-        # try:
-        handler(update, context)
-        # except Exception as e:
-        #     updater.bot.send_message(
-        #         chat_id=config["admins"][0], text=e.__str__())
+        try:
+            admin = str(update.message.from_user.id) in config["admins"]
+            if not admin and update.effective_chat.id != config["farther_chat_id"]:
+                context.bot.send_message(chat_id=update.effective_chat.id,
+                                         text="You can only use this bot in the Farthest chat.")
+                return
+            handler(update, context)
+        except Exception as e:
+            updater.bot.send_message(
+                chat_id=config["admins"][0], text=e.__str__())
     return callback
 
 
@@ -113,15 +163,22 @@ def add_callback(update: Update, context: CallbackContext):
     # elif
 
 
-
 def spotify():
     # TODO allow playing spotify songs
     pass
 
 
 def volume_callback(update: Update, context: CallbackContext):
+    if is_quiet_hour():
+        if not str(update.message.from_user.id) in config["admins"]:
+            context.bot.send_message(chat_id=update.effective_chat.id,
+                                     text=f"You cannot adjust the volume during quiet hours.",
+                                     parse_mode="HTML",
+                                     reply_to_message_id=update.message.message_id)
+            return
+
     usage = usage_dispatcher(
-        "<b>Usage:</b>\n/volume [level]\n\tVolume must be an integer from 0-100", update)
+        "<b>Usage:</b>\n/volume [level [-d | -u]]\n\tVolume must be an integer from 0-100\n\t-d makes the volume go down by level\n\t -u makes the volume go up by level", update)
 
     if len(context.args) == 0:
         context.bot.send_message(chat_id=update.effective_chat.id,
@@ -239,11 +296,14 @@ def connect():
 
 if __name__ == "__main__":
     init_handlers()
+    quiet_thread = threading.Thread(target=quiet_wrapper,)
+    quiet_thread.start()
+    print("Checking network connection...")
     while True:
         if connect():
-            print("connected")
+            print("\tConnected")
             updater.start_polling()
             break
         else:
-            print("retry in 5")
+            print("\tretry in 5")
             time.sleep(5)
