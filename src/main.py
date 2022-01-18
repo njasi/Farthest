@@ -133,6 +133,19 @@ def add_callback(update: Update, context: CallbackContext):
             download=False
         )
 
+
+        if video_info["_type"] == "playlist":
+            for entry in video_info["entries"]:
+                audio = AudioValue(
+                    entry["webpage_url"],
+                    entry["thumbnail"],
+                    entry["title"],
+                    update.message.from_user.full_name,
+                    entry["duration"],
+                    update.message.from_user.id)
+                QUEUE.add_audio(audio)
+            return
+
         # file = open("test.txt", "w")
         # file.write(str(video_info))
         # file.close()
