@@ -59,16 +59,19 @@ class AudioValue:
         return str + f" ({datetime.timedelta(seconds=self.length)})"
 
     def send(self, bot, now=False, wait=0):
-        text = ""
-        if now:
-            text = f"<b>Playing 'song':</b>\n{self.to_html()}\nAdded by: <a href = 'tg://user?id={self.user_id}'>{self.added}</a>"
-        else:
-            text = f"<b>Added 'song':</b>\n{self.to_html()}\n\tAdded by: <a href = 'tg://user?id={self.user_id}'>{self.added}</a>\n Plays in {datetime.timedelta(seconds=wait)}"
+        try:
+            text = ""
+            if now:
+                text = f"<b>Playing 'song':</b>\n{self.to_html()}\nAdded by: <a href = 'tg://user?id={self.user_id}'>{self.added}</a>"
+            else:
+                text = f"<b>Added 'song':</b>\n{self.to_html()}\n\tAdded by: <a href = 'tg://user?id={self.user_id}'>{self.added}</a>\n Plays in {datetime.timedelta(seconds=wait)}"
 
-        bot.send_message(chat_id=FARTHER_CHAT, text=text, parse_mode="HTML")
-        if now:
-            bot.send_message(chat_id=FARTHER_CHANNEL,
-                             text=text, parse_mode="HTML")
+            bot.send_message(chat_id=FARTHER_CHAT, text=text, parse_mode="HTML")
+            if now:
+                bot.send_message(chat_id=FARTHER_CHANNEL,
+                                text=text, parse_mode="HTML")
+        except:
+            pass
 
 
 class AudioQueue:
