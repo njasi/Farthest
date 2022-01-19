@@ -133,8 +133,8 @@ def add_callback(update: Update, context: CallbackContext):
             download=False
         )
 
-
-        if video_info["_type"] == "playlist":
+        if "_type" in video_info and \
+                video_info["_type"] == "playlist":
             for entry in video_info["entries"]:
                 audio = AudioValue(
                     entry["webpage_url"],
