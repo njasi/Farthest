@@ -258,6 +258,15 @@ def play_callback(update: Update, context: CallbackContext):
 
 
 def skip_callback(update: Update, context: CallbackContext):
+    admin = str(update.message.from_user.id) in config["admins"]
+    if admin:
+        if len(context.args) > 1:
+            try:
+                num = int(context.args[1])
+                for _ in range(num):
+                    QUEUE.skip()
+            except:
+                pass
     skipped = QUEUE.skip()
     text = f"Skipped <a href='{skipped.url}'>{skipped.title}</a>." if skipped != None else "The queue is empty, there is nothing to skip. Add things to the queue with /add"
     context.bot.send_message(chat_id=update.effective_chat.id,
