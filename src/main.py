@@ -1,14 +1,16 @@
 import json
 import re
 import logging
-import youtube_dl
+import yt_dlp
 import time
 import urllib
 import socket
 import threading
 from datetime import datetime
 
-from youtube_dl import YoutubeDL
+from yt_dlp import YoutubeDL
+
+
 from Audio import AudioQueue, AudioValue
 from telegram import Update
 from telegram.ext import Filters, Updater
@@ -19,7 +21,7 @@ src = os.path.dirname(os.path.realpath(__file__))
 ydl_opts = {
     'quiet': True
 }
-youtube_dl_manager = youtube_dl.YoutubeDL(ydl_opts)
+youtube_dl_manager = yt_dlp.YoutubeDL(ydl_opts)
 
 
 f = open(src + "/../config.json", "r")
@@ -123,56 +125,117 @@ def add_callback(update: Update, context: CallbackContext):
     yt_match = re.match(YOUTUBE_REGEX, context.args[0])
     # sp_match = re.match(SPOTIFY_REGEX, context.args[0])
     # raw_match = re.match(RAW_MATCH, context.args[0])
+
     if yt_match:
-        options = {
-            'format': 'worstaudio/worst',
-            'keepvideo': False,
-        }
-        video_info = YoutubeDL(options).extract_info(
-            url=yt_match.group(0),
-            download=False
-        )
+        # options = {
+        #     'format': 'worstaudio/worst',
+        #     'keepvideo': True,
+        # }
+        # video_info = YoutubeDL(options).extract_info(
+        #     url=yt_match.group(0),
+        #     download=False
+        # )
 
-        if "_type" in video_info and \
-                video_info["_type"] == "playlist":
-            for entry in video_info["entries"]:
-                audio = AudioValue(
-                    entry["webpage_url"],
-                    entry["thumbnail"],
-                    entry["title"],
-                    update.message.from_user.full_name,
-                    entry["duration"],
-                    update.message.from_user.id)
-                QUEUE.add_audio(audio)
-            return
+        # if "_type" in video_info and \
+        #         video_info["_type"] == "playlist":
+        #     for entry in video_info["entries"]:
+        #         audio = AudioValue(
+        #             entry["webpage_url"],
+        #             entry["thumbnail"],
+        #             entry["title"],
+        #             update.message.from_user.full_name,
+        #             entry["duration"],
+        #             update.message.from_user.id)
+        #         QUEUE.add_audio(audio)
+        #     return
 
-        # file = open("test.txt", "w")
-        # file.write(str(video_info))
-        # file.close()
-
-        audio = AudioValue(
-            yt_match.group(0),
-            video_info["thumbnail"],
-            video_info["title"],
-            update.message.from_user.full_name,
-            video_info["duration"],
-            update.message.from_user.id)
-        QUEUE.add_audio(audio)
+        # audio = AudioValue(
+        #     yt_match.group(0),
+        #     video_info["thumbnail"],
+        #     video_info["title"],
+        #     update.message.from_user.full_name,
+        #     video_info["duration"],
+        #     update.message.from_user.id)
+        # QUEUE.add_audio(audio)
+        youtube_search_add(yt_match.group(0), url=True, update=update)
 
     else:
-        options = {'format': 'worstaudio/worst', 'noplaylist': 'True'}
         term = " ".join(context.args)
-        video_info = YoutubeDL(options).extract_info(
-            f"ytsearch:{term}", download=False)['entries'][0]
-        audio = AudioValue(
-            video_info["webpage_url"],
-            video_info["thumbnail"],
-            video_info["title"],
-            update.message.from_user.full_name,
-            video_info["duration"],
-            update.message.from_user.id)
-        QUEUE.add_audio(audio)
-    # elif
+        youtube_search_add(term, update=update)
+
+
+def youtube_search_add(term, url=False, update=None):
+    result = youtube_search(term, url=url, update=update)
+
+    # TODO add result
+    audio = AudioValue(
+        result["webpage_url"],
+        result["thumbnail"],
+        result["title"],
+        update.message.from_user.full_name,
+        result["duration"],
+        update.message.from_user.id)
+    QUEUE.add_audio(audio)
+
+    return result
+
+
+def youtube_search(term, amount=1, url=False, update=None):
+    '''
+    use yt_dlp to find the first non livestream youtube
+    video, and return the important attributes
+
+    if you want to print for debug you have to do
+    this to get actual json:
+        print(json.dumps(ydl.sanitize_info(info)))
+    '''
+    ydl_opts = {
+        'match_filter': yt_dlp.utils.match_filter_func("!is_live"),
+        'noplaylist': "True" if url else "False",
+        'format': 'worstaudio/worst'
+    }
+
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        info = {}
+        out_vid = {"placeholder": True}
+        if url:
+            info = ydl.extract_info(
+                url=term,
+                download=False
+            )
+            if "_type" in info and info["_type"] == "playlist":
+                results = []
+                for entry in info["entries"]:
+                    results += [youtube_search_add(
+                        entry["webpage_url"], url=True,update=update)]
+                return {"result": "ok", "type": "playlist", "list": results}
+            else:
+                out_vid = info
+        else:
+            info = ydl.extract_info(f"ytsearch{amount}:{term}", download=False)
+
+            for entry in info["entries"]:
+                if not entry["is_live"]:
+                    out_vid = entry
+                    break
+
+            if amount > 20:
+                return {
+                    "result": "err",
+                    "description": "All videos parsed for this search term were livestreams."
+                }
+            elif "placeholder" in out_vid:
+                return youtube_search(term, amount=amount + 5, update=update)
+
+        out = {
+            "result": "ok",
+            "type": "video",
+            "webpage_url": out_vid["webpage_url"],
+            "thumbnail": out_vid["thumbnail"],
+            "title": out_vid["title"],
+            "duration": out_vid["duration"],
+        }
+        return out
 
 
 def spotify():

@@ -1,20 +1,18 @@
 import vlc
 import json
-import youtube_dl
+import yt_dlp
 import datetime
 import os
-from youtube_dl import YoutubeDL
 src = os.path.dirname(os.path.realpath(__file__))
 
 # TODO figure out why this doesnt work
 ydl_opts = {
     'quiet': True
 }
-youtube_dl_manager = youtube_dl.YoutubeDL(ydl_opts)
+youtube_dl_manager = yt_dlp.YoutubeDL(ydl_opts)
 
 
-
-f = open(src+ "/../config.json", "r")
+f = open(src + "/../config.json", "r")
 config = json.load(f)
 FARTHER_CHAT = config["farther_chat_id"]
 FARTHER_CHANNEL = config["farther_channel_id"]
@@ -33,22 +31,23 @@ class AudioValue:
 
     def get_audio_url(self):
         if self.type == "YOUTUBE":
-            options = {
+            ydl_opts = {
                 'format': 'worstaudio/worst',
                 'keepvideo': False,
             }
-            video_info = YoutubeDL(options).extract_info(
-                url=self.url,
-                download=False
-            )
-            # cursed loop to grab smallest file
-            smallest = None
-            url = None
-            for format in video_info["formats"]:
-                if not smallest or ("audio only" in format["format"] and (not format["filesize"] == None and int(format["filesize"]) < smallest)):
-                    smallest = int(format["filesize"])
-                    url = format["url"]
-            return url
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                video_info = ydl.extract_info(
+                    url=self.url,
+                    download=False
+                )
+                # cursed loop to grab a small file
+                url = None
+                for format in video_info["formats"]:
+                    if not url or \
+                        ("audio only" in format["format"] \
+                         and format["format_note"] == "ultralow"):
+                        url = format["url"]
+                return url
         return None
 
     def to_html(self, current=False):
@@ -66,10 +65,11 @@ class AudioValue:
             else:
                 text = f"<b>Added 'song':</b>\n{self.to_html()}\n\tAdded by: <a href = 'tg://user?id={self.user_id}'>{self.added}</a>\n Plays in {datetime.timedelta(seconds=wait)}"
 
-            bot.send_message(chat_id=FARTHER_CHAT, text=text, parse_mode="HTML")
+            bot.send_message(chat_id=FARTHER_CHAT,
+                             text=text, parse_mode="HTML")
             if now:
                 bot.send_message(chat_id=FARTHER_CHANNEL,
-                                text=text, parse_mode="HTML")
+                                 text=text, parse_mode="HTML")
         except:
             pass
 
