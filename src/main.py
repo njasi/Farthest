@@ -128,36 +128,6 @@ def add_callback(update: Update, context: CallbackContext):
     # raw_match = re.match(RAW_MATCH, context.args[0])
 
     if yt_match:
-        # options = {
-        #     'format': 'worstaudio/worst',
-        #     'keepvideo': True,
-        # }
-        # video_info = YoutubeDL(options).extract_info(
-        #     url=yt_match.group(0),
-        #     download=False
-        # )
-
-        # if "_type" in video_info and \
-        #         video_info["_type"] == "playlist":
-        #     for entry in video_info["entries"]:
-        #         audio = AudioValue(
-        #             entry["webpage_url"],
-        #             entry["thumbnail"],
-        #             entry["title"],
-        #             update.message.from_user.full_name,
-        #             entry["duration"],
-        #             update.message.from_user.id)
-        #         QUEUE.add_audio(audio)
-        #     return
-
-        # audio = AudioValue(
-        #     yt_match.group(0),
-        #     video_info["thumbnail"],
-        #     video_info["title"],
-        #     update.message.from_user.full_name,
-        #     video_info["duration"],
-        #     update.message.from_user.id)
-        # QUEUE.add_audio(audio)
         youtube_search_add(yt_match.group(0), url=True, update=update)
 
     else:
