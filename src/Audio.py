@@ -31,6 +31,7 @@ class AudioValue:
 
     def get_audio_url(self):
         if self.type == "YOUTUBE":
+            print("[YOUTUBE]\tFinding audio url.")
             ydl_opts = {
                 'format': 'worstaudio/worst',
                 'keepvideo': False,
@@ -40,13 +41,14 @@ class AudioValue:
                     url=self.url,
                     download=False
                 )
-                # cursed loop to grab a small file
+
                 url = None
                 for format in video_info["formats"]:
-                    if not url or \
-                        ("audio only" in format["format"] \
-                         and format["format_note"] == "ultralow"):
+                    if format["audio_ext"] != "none" and \
+                            (not url or "audio only" in format["format"]):
                         url = format["url"]
+                        break
+                print(f"[YOUTUBE]\t\tFound : {url}")
                 return url
         return None
 
@@ -117,7 +119,15 @@ class AudioQueue:
             vlc.EventType.MediaPlayerEncounteredError, self.play_next)
 
         # play the next audio
-        media = self.vlc.media_new(next.get_audio_url())
+        url = next.get_audio_url()
+        if url == None:
+            self.bot.send_message(
+                chat_id=FARTHER_CHAT,
+                text="Farthest was unable to find a suitable audio file for this video. Perhaps try a different link for the same song.", parse_mode="HTML")
+            self.currently_playing = next
+            self.play_next()
+            return
+        media = self.vlc.media_new(url)
         self.player.set_media(media)
         self.player.play()
         self.currently_playing = next

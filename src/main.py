@@ -108,8 +108,9 @@ def handler_handler(handler):
                 return
             handler(update, context)
         except Exception as e:
-            updater.bot.send_message(
-                chat_id=config["admins"][0], text=e.__str__())
+            print(e)
+            for admin in config["admins"]:
+                updater.bot.send_message(chat_id=admin, text=e.__str__())
     return callback
 
 
@@ -207,7 +208,7 @@ def youtube_search(term, amount=1, url=False, update=None):
                 results = []
                 for entry in info["entries"]:
                     results += [youtube_search_add(
-                        entry["webpage_url"], url=True,update=update)]
+                        entry["webpage_url"], url=True, update=update)]
                 return {"result": "ok", "type": "playlist", "list": results}
             else:
                 out_vid = info
