@@ -19,6 +19,10 @@ FARTHER_CHANNEL = config["farther_channel_id"]
 f.close()
 
 
+TYPE_YOUTUBE = "YOUTUBE"
+# ik the raw file adds security issues, but its funny
+TYPE_RAW = "RAW"
+
 class AudioValue:
     def __init__(self, url, image, title, added, length, user_id):
         self.url = url
@@ -27,11 +31,11 @@ class AudioValue:
         self.added = added
         self.length = length
         self.user_id = user_id
-        self.type = "YOUTUBE"
+        self.type = TYPE_YOUTUBE
 
     def get_audio_url(self):
-        if self.type == "YOUTUBE":
-            print("[YOUTUBE]\tFinding audio url.")
+        if self.type == TYPE_YOUTUBE:
+            print("[YOUTUBE]:\tFinding audio url.")
             ydl_opts = {
                 'format': 'worstaudio/worst',
                 'keepvideo': False,
@@ -50,6 +54,9 @@ class AudioValue:
                         break
                 print(f"[YOUTUBE]\t\tFound : {url}")
                 return url
+        elif self.type == TYPE_RAW:
+            print(f"[RAW]:\t\tPlaying {self.url}")
+            return self.url
         return None
 
     def to_html(self, current=False):

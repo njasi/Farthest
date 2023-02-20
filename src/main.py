@@ -6,8 +6,11 @@ import time
 import urllib
 import socket
 import threading
-from datetime import datetime
+import audioread
+import requests
+import traceback
 
+from datetime import datetime
 from yt_dlp import YoutubeDL
 
 
@@ -33,6 +36,9 @@ MAX_VOLUME = 100
 
 # check if url is youtube vid
 YOUTUBE_REGEX = '^(https?\:\/\/)?((www\.)?youtube\.com|youtu\.be)\/.+$'
+RAW_REGEX = '^.*(?=\.wav$|\.mp3$)'
+TYPE_REGEX = '\.mp3'
+URL_REGEX = '^((http|https)://)[-a-zA-Z0-9@:%._\\+~#?&//=]{2,256}\\.[a-z]{2,6}\\b([-a-zA-Z0-9@:%._\\+~#?&//=]*)$'
 
 # config bot
 updater = Updater(config["token"], use_context=True)
@@ -42,6 +48,27 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 
 # config audio queue
 QUEUE = AudioQueue(updater.bot)
+
+
+def test_length(url):
+    time = 0
+    ext = re.search(TYPE_REGEX, url)
+    if ext is None:
+        return time
+    ext = ext.group(0)
+    name = f"temp{ext}"
+    try:
+        with open(name, 'wb') as f:
+            doc = requests.get(url)
+            f.write(doc.content)
+        with audioread.audio_open(name) as f:
+            # totalsec contains the length in float
+            time = f.duration
+    except:
+        # just to make sure the file gets removed if its created
+        pass
+    os.remove(name)
+    return int(time)
 
 
 def is_quiet_hour():
@@ -108,7 +135,7 @@ def handler_handler(handler):
                 return
             handler(update, context)
         except Exception as e:
-            print(e)
+            traceback.print_exc()
             for admin in config["admins"]:
                 updater.bot.send_message(chat_id=admin, text=e.__str__())
     return callback
@@ -124,15 +151,29 @@ def add_callback(update: Update, context: CallbackContext):
         return
 
     yt_match = re.match(YOUTUBE_REGEX, context.args[0])
+    raw_match = re.match(RAW_REGEX, context.args[0])
+    url_match = re.match(RAW_REGEX, context.args[0])
     # sp_match = re.match(SPOTIFY_REGEX, context.args[0])
-    # raw_match = re.match(RAW_MATCH, context.args[0])
 
     if yt_match:
         youtube_search_add(yt_match.group(0), url=True, update=update)
-
+    elif raw_match and url_match:
+        raw_add(context.args[0], update=update)
     else:
         term = " ".join(context.args)
         youtube_search_add(term, update=update)
+
+
+def raw_add(phrase, update=None):
+    audio = AudioValue(
+        phrase,
+        None,
+        phrase,
+        update.message.from_user.full_name,
+        test_length(phrase),
+        update.message.from_user.id)
+    audio.type = "RAW"
+    QUEUE.add_audio(audio)
 
 
 def youtube_search_add(term, url=False, update=None):
