@@ -127,6 +127,9 @@ class AudioQueue:
 
         # play the next audio
         url = next.get_audio_url()
+        if f"{next.user_id}" in config["shadowban"]:
+            self.currently_playing = next
+            self.play_next()
         if url == None:
             self.bot.send_message(
                 chat_id=FARTHER_CHAT,
