@@ -2,3 +2,4 @@ config.json
 config_backup.json
 test.txt
 src/__pycache__/*
+.venv

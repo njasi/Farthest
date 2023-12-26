@@ -1,0 +1,7 @@
+{
+  "token": "bot token",
+  "username": "bot username",
+  "farther_chat_id": 0,
+  "farther_channel_id": 0,
+  "admins": ["list", "of", "admin", "ids"]
+}

@@ -11,10 +11,9 @@ import requests
 import traceback
 
 from datetime import datetime
-from yt_dlp import YoutubeDL
 
 
-from Audio import AudioQueue, AudioValue
+from audio.Audio import AudioQueue, AudioValue
 from telegram import Update
 from telegram.ext import Filters, Updater
 from telegram.ext import CallbackContext, CommandHandler, MessageHandler
