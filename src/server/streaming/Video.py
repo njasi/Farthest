@@ -28,7 +28,7 @@ class Video:
 
         # resource info
         self.url = url
-        self.resource_url
+        self.resource_url = None
         # none if not downloaded, path otherwise
         self.resource_path = None
 

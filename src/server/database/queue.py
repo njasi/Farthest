@@ -1,7 +1,7 @@
 """
 Set of functions used to interact with the queue database
 """
-import datetime
+import time
 from tinydb.operations import decrement, subtract
 from tinydb import where
 
@@ -39,7 +39,6 @@ class Queue:
     def length(self):
         return QueueDB.count(where("channel") == self.channel)
 
-    @staticmethod
     def add(self, id, title, length, url, user_id, source="yt"):
         """
         add the song into the queue
@@ -60,7 +59,7 @@ class Queue:
             "current": False,
             "position": self.length(),
             "channel": self.channel,
-            "created_at": datetime.now(),
+            "created_at": int(time.time()),
         }
         if self.is_empty():
             entry["current"] = True

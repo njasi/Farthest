@@ -1,5 +1,7 @@
 from streaming.Channel import Channel
 
+CHANNEL_FARTHER_ID = 0
+
 
 def load_channels():
     """
@@ -8,8 +10,12 @@ def load_channels():
 
     print("Loading Channels")
 
-    channel1 = Channel(channel_id=1, host="localhost", port=8085)
-    return {1: channel1}
+    channel0 = Channel(channel_id=1, host="localhost", pretty_name="Farther", port=8085)
+
+    # start worker threads
+    channel0.start_channel()
+
+    return {0: channel0}
 
 
 CHANNELS = load_channels()

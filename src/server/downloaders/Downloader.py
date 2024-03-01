@@ -6,7 +6,7 @@ from urllib.request import urlretrieve
 from streaming.Video import Video
 from .exceptions import *
 
-
+# TODO: make url based functions also work for videos as arguments,
 
 # an informal interface we are gonna use for standardization
 class Downloader:
@@ -60,7 +60,7 @@ class Downloader:
         get unique id for the resource, default id is:
             site_flag + base + hostname
         """
-        resource_info = urlparse.urlparse(url)
+        resource_info = urlparse(url)
 
         base, ext = os.path.splitext(os.path.basename(resource_info.path))
 

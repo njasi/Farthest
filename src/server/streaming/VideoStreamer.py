@@ -7,7 +7,7 @@ class VideoStreamer:
         self,
         host="localhost",
         port=8080,
-        get_next = None,
+        get_next=None,
     ):
         self.port = port
         # TODO inspect the quality of the stream with these options
@@ -33,7 +33,7 @@ class VideoStreamer:
             vlc.EventType.MediaPlayerEncounteredError, self.stream
         )
 
-    def stream(self, event) -> None:
+    def stream(self, event=None) -> None:
         """
         Play the next video in the channel queue
 

@@ -4,9 +4,6 @@ from .TestDownloader import TestDownloader
 from .exceptions import *
 
 DOWNLOADERS = [TestDownloader]
-print("Downloaders")
-print(Downloader)
-print(TestDownloader)
 
 # TODO make a special thread for downloading / searching
 

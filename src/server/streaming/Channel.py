@@ -10,6 +10,9 @@ from .VideoStreamer import VideoStreamer
 from .Video import Video
 from database.queue import Queue as QDB
 from queue import Queue
+from database.users import Users
+
+from pprint import pprint
 
 # at what point does downloading happen?
 # that shoul;d probably be managed by the channel?
@@ -21,12 +24,15 @@ class Channel:
     def __init__(
         self,
         channel_id,
+        pretty_name,
         host,
         port,
         queue=[],
     ):
         # the streamer instance which will stream all of the vids
-        self.streamer = VideoStreamer(host=host, port=port)
+        self.streamer = VideoStreamer(host=host, port=port, get_next=self.get_next)
+
+        self.pretty_name = pretty_name
 
         # the thread that the video streamer will be running in
         # gotta be seperate so we dont hold up reactions
@@ -131,6 +137,9 @@ class Channel:
             # wait until there is an action
             action = self.actionQueue.get()
 
+            print("Channel: processing action")
+            print(action)
+
             # run the action
             action.run(self)
 
@@ -139,6 +148,10 @@ class Channel:
     """
 
     def send_action(self, action):
+        """
+        Add action to the actionQueue, which will then
+        be processed by the worker thread of the channel
+        """
         self.actionQueue.put(action)
 
     def play(self):
@@ -172,17 +185,15 @@ class Channel:
         """
 
         # this is a reasonable place to start the downloads, but how
-        self.queue.add()
-        self.db.add(
-            video.get_id(),
-            video.title,
-            video.length,
-            video.url,
-            video.user_id,
-        )
+        # should it be formatted
+        self.queue.append(video)
+        Users.add_play(video.length, video.user_id)
+        self.db.add(video.get_id(), video.title, video.length, video.url, video.user_id)
 
-        # if not be currently playing
-        if self.current is None and len(self.queue) == 0:
+        # if its not currently playing anything
+        # TODO make a moore competent check lol
+        if self.streamer.empty:
+            #
             self.streamer.stream()
 
         # already things in the queue
@@ -236,9 +247,9 @@ class ChannelAction:
 
         # additional info
         self.created_at = time.time()
-        self.__dict__.update(kwargs)
+        self.__dict__.update(**kwargs)
 
-    def run(chan: Channel):
+    def run(self, chan: Channel):
         pass
 
 
@@ -247,7 +258,7 @@ class Pause(ChannelAction):
     action for pausing
     """
 
-    def run(chan: Channel):
+    def run(self, chan: Channel):
         chan.pause()
 
 
@@ -256,7 +267,7 @@ class Play(ChannelAction):
     action for playing stream
     """
 
-    def run(chan: Channel):
+    def run(self, chan: Channel):
         chan.play()
 
 
@@ -268,5 +279,12 @@ class Skip(ChannelAction):
     def __init__(self, amount) -> None:
         super(self, {amount})
 
-    def run(chan: Channel):
-        chan.skip()
+    def run(self, chan: Channel):
+        chan.skip(self.amount)
+
+
+class Add(ChannelAction):
+    "action for adding to the queue"
+
+    def run(self, chan: Channel):
+        chan.add(self.video)

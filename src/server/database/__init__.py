@@ -2,6 +2,8 @@
 from tinydb import TinyDB
 db = TinyDB('data/db.json')
 
+# TODO change this to use something other than tinydb. I despise tinydb
+
 History = db.table('history')
 Queue = db.table('queue')
 User = db.table('user')

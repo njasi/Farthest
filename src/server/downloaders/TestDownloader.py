@@ -37,7 +37,6 @@ class TestDownloader(Downloader):
         """
         if video is not None:
             url = video.url
-        
 
         return url
 

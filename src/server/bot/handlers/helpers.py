@@ -37,8 +37,7 @@ def parse_args(parser, context) -> argparse.Namespace:
     try:
         args = context.args
         options = parser.parse_args(args)
-        print(options)
-        
+
         return options
     except ParserError as e:
         e.message = f"<b>Argument Error:</b>\n{str(e)}\n\n<b>Usage Instructions:</b>\n<pre>{parser.format_help()}</pre>"
