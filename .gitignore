@@ -1,5 +1,7 @@
 config.json
 config_backup.json
 test.txt
-src/__pycache__/*
+__pycache__
 .venv
+venv
+src/old

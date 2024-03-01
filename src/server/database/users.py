@@ -1,9 +1,9 @@
 '''
 Set of functions to interact with the history database
 '''
-from database.main import User as UserDB
 from tinydb.operations import add, increment
 from tinydb import Query
+from . import User as UserDB
 
 
 class Users:

@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Streaming Video</title>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  </head>
+  <body>
+    <video id="video" controls width="640" height="360"></video>
+
+    <script>
+      if (Hls.isSupported()) {
+        var video = document.getElementById("video");
+        var hls = new Hls();
+        hls.loadSource("http://localhost:8080");
+        hls.attachMedia(video);
+      } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
+        video.src = "http://localhost:8080";
+      }
+    </script>
+  </body>
+</html>
