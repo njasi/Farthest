@@ -34,6 +34,6 @@ class FartherContext(ContextTypes.DEFAULT_TYPE):
         if isinstance(update, Update) and update.effective_user:
             # ensure the user exists & attach them to context
             context.dbuser = Users.ensure_exists(update.effective_user.id)
-        
+
         # Remember to return the object
         return context
