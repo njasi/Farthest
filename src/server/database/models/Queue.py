@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, Date, ForeignKey
 from sqlalchemy.orm import relationship
-from database.base import Base
 from streaming.Video import Video
+from database.base import Base
 
 
 class Queue(Base):
@@ -25,7 +25,7 @@ class Queue(Base):
 
 
 
-class QueueInterace:
+class QueueInterface:
     """
     Class to interface with the queue db in a more "queuelike" manner
 

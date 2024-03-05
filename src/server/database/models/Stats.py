@@ -3,6 +3,7 @@ from sqlalchemy.orm import relationship
 from database.base import Base
 
 
+
 class Stats(Base):
     """
     Stats db table for storing information abt songs that have been played,

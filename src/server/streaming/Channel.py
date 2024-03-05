@@ -8,9 +8,9 @@ from telegram.error import BadRequest
 
 from .VideoStreamer import VideoStreamer
 from .Video import Video
-from database.queue import Queue as QDB
 from queue import Queue
-from database.users import Users
+
+# from database import QueueInterface, History, Video
 
 from pprint import pprint
 
@@ -27,7 +27,6 @@ class Channel:
         pretty_name,
         host,
         port,
-        queue=[],
     ):
         # the streamer instance which will stream all of the vids
         self.streamer = VideoStreamer(host=host, port=port, get_next=self.get_next)
@@ -41,10 +40,9 @@ class Channel:
         # manages the playlist, one an array of current video instances
         # and the other a jsondb for robustness & transition to history info
         self.current: Video = None
-        # queues will hold all non playing songs
-        self.queue = queue
-        self.db = QDB(channel_id)
-        # TODO load from db?
+        # queue holds all songs (currently playing should be 0)
+        # TODO add curretly playing attribute to queue table as a backup.
+        # self.db = QueueInterface(channel_id)
 
         self.actionQueue = Queue()
 

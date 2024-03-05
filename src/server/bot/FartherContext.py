@@ -3,7 +3,7 @@ from telegram import Update
 
 from streaming import CHANNELS, CHANNEL_FARTHER_ID, Channel
 from downloaders import DOWNLOADERS, lookup, search
-from database.users import Users
+from database import Users
 
 
 class FartherContext(ContextTypes.DEFAULT_TYPE):
@@ -27,13 +27,15 @@ class FartherContext(ContextTypes.DEFAULT_TYPE):
 
     @classmethod
     def from_update(cls, update: object, application: Application) -> "FartherContext":
-        """Override from_update to ensure user exists in the db"""
+        """
+        Override from_update to ensure user exists in the db,
+        and attach it to the context (as .dbuser)
+        """
         # Make sure to call super()
         context = super().from_update(update, application)
 
         if isinstance(update, Update) and update.effective_user:
             # ensure the user exists & attach them to context
-            context.dbuser = Users.ensure_exists(update.effective_user.id)
+            context.dbuser = Users.find_or_create(update.effective_user.id)
 
-        # Remember to return the object
         return context

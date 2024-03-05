@@ -3,6 +3,7 @@ from sqlalchemy.orm import relationship
 from database.base import Base
 
 
+
 class Video(Base):
     """
     Video db table for storing information abt songs that have been played
@@ -47,7 +48,7 @@ class Video(Base):
         self.release_date = release_date
 
     @staticmethod
-    def findOrCreate(
+    def find_or_create(
         source: str, source_id: str, title: str = "", id: int = None, session=None
     ):
         """

@@ -3,7 +3,7 @@ from sqlalchemy.orm import relationship
 from database.base import Base
 
 
-class Hstory(Base):
+class History(Base):
     """
     Stats db table for storing information abt songs that have been played,
     could reasonably have this all in the video table, but im seperatng to avoid

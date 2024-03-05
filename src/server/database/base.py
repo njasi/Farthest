@@ -11,6 +11,5 @@ from sqlalchemy.ext.declarative import declarative_base
 
 # import this when we wanna link into flask
 metadata = MetaData()
+
 Base = declarative_base(metadata=metadata)
-
-

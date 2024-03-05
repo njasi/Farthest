@@ -3,19 +3,18 @@ from sqlalchemy.orm import relationship
 from database.base import Base
 
 
-class Stats(Base):
+class Users(Base):
     """
-    Stats db table for storing information abt songs that have been played,
-    could reasonably have this all in the video table, but im seperatng to avoid
-    clutter.
+    User db table for storing information abt users
 
 
     id:             int, unique id for the model
     telegram_id:    int, telegram id of the user (string cause tel)
-    admin:
+    admin:          bool, if the user is an admin (most will be an admin based oon
+                        their chat status but why not build for extra functionality)
     """
 
-    __tablename__ = "stats"
+    __tablename__ = "users"
 
     id = Column(Integer, primary_key=True)
     # telegram ids can be held in a 64 bit signed int for sure
@@ -24,7 +23,7 @@ class Stats(Base):
     admin = Column(Boolean)
 
     @staticmethod
-    def findOrCreate(telegram_id, session=None):
+    def find_or_create(telegram_id, session=None):
         """
         find a user by their telegram_id if they exist,
         if they do not exist then create a record and return it
