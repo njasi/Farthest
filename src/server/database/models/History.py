@@ -29,17 +29,23 @@ class History(Base):
     queue_time = Column(Date)
     start_time = Column(Date)
     end_time = Column(Date)
-    channel_id = Column(Integer)
 
     # Relationships
     # history object should refrence
     #   - one video: duh
     #   - one user: the person who queued it
-    video = relationship("Video")
+    #   - one channel: the channel it's playing on
+    video = relationship("Video", lazy="joined")
     video_id = Column(Integer, ForeignKey("videos.id"))
 
-    user = relationship("Users")
+    user = relationship("Users", lazy="joined")
     user_id = Column(Integer, ForeignKey("users.id"))
+
+    # dont lazy load cause this is more so its standard with the channel table than
+    # actually getting data from there.
+    channel = relationship("Channels")
+    channel_id = Column(Integer, ForeignKey("channels.id"))
+
 
     @staticmethod
     def create(
@@ -51,7 +57,6 @@ class History(Base):
         skipped: bool = False,
         session=None,
     ):
-
         """
         Adds a new record to the history db
         """

@@ -6,11 +6,11 @@ from telegram import Update
 from telegram.ext import ContextTypes
 from telegram.error import BadRequest
 
-from .VideoStreamer import VideoStreamer
-from .Video import Video
+from ..VideoStreamer import VideoStreamer
+from ..Video import Video
 from queue import Queue
 
-from database import QueueInterface
+from database import QueueInterface, Session
 
 # from database import QueueInterface, History, Video
 
@@ -20,7 +20,16 @@ from database import QueueInterface
 #  - make a thread for all channels for downloading
 
 
-class Channel:
+class BasicManager:
+    """
+    Class which manages all of the streaming functionality of a single channel
+    - manages a worker thread which
+        - does actual streaming via an instance of "VideoStreamer"
+        - watches a queue "actionQueue" which other parts of the server can send actions to (namely the bot)
+    - the channel queue with interactions with the database through "QueueInterface"
+    - sending messages to the telegram chats
+    """
+
     def __init__(
         self,
         channel_id,
@@ -32,18 +41,19 @@ class Channel:
         self.streamer = VideoStreamer(host=host, port=port, get_next=self.get_next)
 
         self.title = title
+        self.channel_id = channel_id
 
         # the thread that the video streamer will be running in
         # gotta be seperate so we dont hold up reactions
         self.thread = None
 
-        # manages the playlist, one an array of current video instances
-        # and the other a jsondb for robustness & transition to history info
-        self.current: Video = None
-        # queue holds all songs (currently playing should be 0)
-        # TODO add curretly playing attribute to queue table as a backup.
+        # make a session for this instance to interact with the db
+        self.session = Session()
+
+        # queue holds all songs (currently playing should be position 0)
         self.db = QueueInterface(channel_id)
 
+        # queue of interactions to handle
         self.actionQueue = Queue()
 
     """
@@ -51,25 +61,21 @@ class Channel:
     """
 
     def get_current(self):
-        return self.current
+        """
+        Get the currently playing video from the queue
+        """
+        # TODO map queue obj to video instance
+        return self.db.peek(self.session)
 
     def get_next(self):
         """
-        get the next element out of the queue
-        and update the db
+        get the next element out of the queue,
+        while also removing the front
         """
-        next = None
-        # update database by removing the top song
-        # note that the db includes current while
-        # self.queue does not, i think i got the
-        # logic right here but its a bit annoying
-        self.db.pop()
-        self.db.update_current()
 
-        if len(self.queue) > 0:
-            next = self.queue[0]
-            self.current = next
-            self.queue = self.queue[1:]
+        # this dequeue returns the new head, so it also does the next element
+        next = self.db.dequeue(self.session)
+        print(next)
 
         return next
 
@@ -82,12 +88,10 @@ class Channel:
         Calculate the total remaining time in the playlist,
         including time left in the current video
         """
-        remaining_time = 0
-        for video in self.queue:
-            remaining_time += video.length
+        remaining_time = self.db.total_time(self.session)
 
         # if theres a currently playing vid get the remaining time
-        if self.current is not None:
+        if not self.streamer.empty:
             remaining_time += self.streamer.get_remaining()
 
         return remaining_time
@@ -99,13 +103,14 @@ class Channel:
         """
 
         result = ""
-        if not self.playlist:
-            result = "<>The queue is empty.</b>\nUse /add to add things to the queue"
+
+        if self.db.is_empty(self.session):
+            result = "<b>The queue is empty.</b>\nUse /add to add things to the queue"
         else:
             result = f"Queue ({datetime.timedelta(seconds=self.queue_get_length())})"
             # TODO add the total time
-            for i, video in enumerate(self.playlist[start_idx : start_idx + page_size]):
-                result += f"\n[{i}] {video}"
+            # for i, video in enumerate(self.playlist[start_idx : start_idx + page_size]):
+            #     result += f"\n[{i}] {video}"
         return result
 
     """
@@ -115,6 +120,7 @@ class Channel:
     def start_channel(self):
         self.thread = threading.Thread(target=self.process_actions)
         self.thread.start()
+        print(f"\t[Channel {self.channel_id}]: Started Worker thread")
 
     def stop_channel(self):
         """
@@ -222,67 +228,3 @@ class Channel:
     # def remove_from_playlist(self, video):
     #     if video in self.playlist:
     #         self.playlist.remove(video)
-
-
-class ChannelAction:
-    """
-    class to bundle any channel action,
-    idea is we pass it though to the thread in a queue of tasks
-
-    id rather use a combined struct or smth but this is python so
-
-    could pass a tuple but then the managing func would be rough
-    with this we can pass values through & have distince actions
-
-    and the worker thread processes them one by one
-    """
-
-    def __init__(self, update: Update, context: ContextTypes.DEFAULT_TYPE, **kwargs):
-        # for communicating with telegram if needed
-        # most actions will be triggered by an update after all
-        self.update = update
-        self.context = context
-
-        # additional info
-        self.created_at = time.time()
-        self.__dict__.update(**kwargs)
-
-    def run(self, chan: Channel):
-        pass
-
-
-class Pause(ChannelAction):
-    """
-    action for pausing
-    """
-
-    def run(self, chan: Channel):
-        chan.pause()
-
-
-class Play(ChannelAction):
-    """
-    action for playing stream
-    """
-
-    def run(self, chan: Channel):
-        chan.play()
-
-
-class Skip(ChannelAction):
-    """
-    action for skipping currently playing
-    """
-
-    def __init__(self, amount) -> None:
-        super(self, {amount})
-
-    def run(self, chan: Channel):
-        chan.skip(self.amount)
-
-
-class Add(ChannelAction):
-    "action for adding to the queue"
-
-    def run(self, chan: Channel):
-        chan.add(self.video)

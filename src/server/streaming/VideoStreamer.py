@@ -16,8 +16,7 @@ class VideoStreamer:
         self.vlc = vlc.Instance("--no-xlib")
         self.player = self.vlc.media_player_new()
         self.default_screen = "default.png"
-        # this could be managed by the Channel, but is simplier here
-        # NOTE: possible desync on error?
+
         self.empty = True
 
         self.get_next = get_next

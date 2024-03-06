@@ -1,7 +1,7 @@
 from telegram.ext import Application, ContextTypes
 from telegram import Update
 
-from streaming import CHANNELS, CHANNEL_FARTHER_ID, Channel
+from streaming import CHANNELS, CHANNEL_FARTHER_ID\
 from downloaders import DOWNLOADERS, lookup, search
 from database import Users, Session
 
@@ -20,7 +20,7 @@ class FartherContext(ContextTypes.DEFAULT_TYPE):
         super().__init__(application=application, chat_id=chat_id, user_id=user_id)
 
         # for now we dont really need other channels ig
-        self.farther_channel: Channel = CHANNELS[CHANNEL_FARTHER_ID]
+        self.farther_channel = CHANNELS[CHANNEL_FARTHER_ID]
 
         # search the downloaders
         self.search = search
@@ -50,8 +50,11 @@ class FartherContext(ContextTypes.DEFAULT_TYPE):
         """
         Close anything in the context that needs to be closed
         """
-        if self.session:
-            self.session.close()
+        try:
+            if self.session:
+                self.session.close()
+        except:
+            pass
 
     def __del__(self):
         """

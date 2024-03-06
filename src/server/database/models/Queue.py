@@ -1,6 +1,7 @@
 from sqlalchemy import Column, Integer, String, Date, ForeignKey, update, func
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, contains_eager
 from .base import Base
+from .History import History
 
 
 class Queue(Base):
@@ -17,11 +18,16 @@ class Queue(Base):
     __tablename__ = "queue"
 
     id = Column(Integer, primary_key=True)
+    position = Column(Integer)
 
     # Relationships
-    #   each video owns a stats instance, which is just more details on it
-    history = relationship("History")
+    #   each queue object is literally just a history obj with a position
+    #   in the queue
+    history = relationship("History", lazy="joined")
     history_id = Column(Integer, ForeignKey("history.id"))
+
+    channel = relationship("Channels")
+    channel_id = Column(Integer, ForeignKey("channels.id"))
 
 
 class QueueInterface:
@@ -45,11 +51,11 @@ class QueueInterface:
         """
         return session.query(Queue).filter_by(channel_id=self.channel).count()
 
-    def is_empty(self):
+    def is_empty(self, session=None):
         """
         Return true if db is empty, false otherwise
         """
-        return self.length() == 0
+        return self.length(session) == 0
 
     def enqueue(self, history_id: int, video=None, session=None):
         """
@@ -169,15 +175,15 @@ class QueueInterface:
         Calculate the current length of the queue,
         excluding the currently playing song
         """
-        # get all except 0 and return a sum
 
         if session is None:
             raise ValueError("Session cannot be None")
 
-        queue_items = (
+        # get all except 0 and return a sum
+        result = (
             session.query(Queue)
-            .filter_by(channel_id=self.channel)
+            .filter(Queue.channel_id == self.channel)
             .filter(Queue.position > 0)
-            .all()
         )
-        return sum(item.history.time for item in queue_items) if queue_items else 0
+
+        return sum(item.history.video.time for item in result) if result else 0

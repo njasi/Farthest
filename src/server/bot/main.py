@@ -9,6 +9,7 @@ from telegram.ext import Application, CommandHandler, ContextTypes
 from bot.FartherContext import FartherContext
 from bot.handlers.start import start
 from bot.handlers.add import add
+from bot.handlers.queue import queue
 from bot.handlers.helpers import load_config
 from bot.handlers.error import error_handler
 
@@ -26,6 +27,7 @@ def launch() -> None:
 
     # Register commands
     application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("queue", queue))
     # application.add_handler(CommandHandler("add", add))
 
     # the error handler

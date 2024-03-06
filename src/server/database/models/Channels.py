@@ -23,6 +23,9 @@ class Channels(Base):
     title = Column(String)
     descrption = Column(String)
 
+    # channelmanager type
+    manager_type = Column(String)
+
     # streaming location settings
     hostname = Column(String)
     port = Column(Integer)

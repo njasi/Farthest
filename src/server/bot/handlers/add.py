@@ -6,7 +6,7 @@ from telegram import Update
 from downloaders.exceptions import NoDownloaderFound
 from bot import FartherContext
 from bot.handlers.helpers import ArgumentParser, ParserError, parse_args
-from streaming.Channel import Add
+from streaming.managers import Add
 
 # make arg parser
 parser = ArgumentParser(description="Add items to the queue")
