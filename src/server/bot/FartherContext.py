@@ -1,7 +1,7 @@
 from telegram.ext import Application, ContextTypes
 from telegram import Update
 
-from streaming import CHANNELS, CHANNEL_FARTHER_ID\
+from streaming import CHANNELS, CHANNEL_FARTHER_ID
 from downloaders import DOWNLOADERS, lookup, search
 from database import Users, Session
 
