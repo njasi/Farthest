@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, Boolean, Date, ForeignKey
 from sqlalchemy.orm import relationship
-from database.base import Base
+from .base import Base
 
 
 class History(Base):
@@ -35,25 +35,40 @@ class History(Base):
     # history object should refrence
     #   - one video: duh
     #   - one user: the person who queued it
-    stats = relationship("Videos")
+    video = relationship("Video")
     video_id = Column(Integer, ForeignKey("videos.id"))
 
-    user = relationship("User")
-    video_id = Column(Integer, ForeignKey("users.id"))
+    user = relationship("Users")
+    user_id = Column(Integer, ForeignKey("users.id"))
 
     @staticmethod
     def create(
         video_id: int,
+        user_id: int,
         queue_time: Date,
         start_time: Date = None,
         end_time: Date = None,
         skipped: bool = False,
         session=None,
     ):
+
         """
         Adds a new record to the history db
         """
-        # TODO
+        if session is None:
+            raise ValueError("Session cannot be None")
+
+        history_instance = History(
+            video_id=video_id,
+            user_id=user_id,
+            queue_time=queue_time,
+            start_time=start_time,
+            end_time=end_time,
+            skipped=skipped,
+        )
+
+        session.add(history_instance)
+        session.commit()
 
     @staticmethod
     def update(id, start_time=None, end_time=None, skipped=True, session=None):
@@ -65,4 +80,16 @@ class History(Base):
         skipped:    if the video was skipped
         session:    sqlalchemy session to use
         """
-        # TODO
+        if session is None:
+            raise ValueError("Session cannot be None")
+
+        history_instance = session.query(History).get(id)
+
+        if history_instance is not None:
+            if start_time is not None:
+                history_instance.start_time = start_time
+            if end_time is not None:
+                history_instance.end_time = end_time
+            history_instance.skipped = skipped
+
+            session.commit()

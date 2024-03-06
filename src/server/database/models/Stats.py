@@ -1,7 +1,8 @@
-from sqlalchemy import Column, Integer, String, Date, ForeignKey
-from sqlalchemy.orm import relationship
-from database.base import Base
+import datetime
 
+from sqlalchemy import Column, Integer, Date, ForeignKey
+from sqlalchemy.orm import relationship
+from .base import Base
 
 
 class Stats(Base):
@@ -23,65 +24,49 @@ class Stats(Base):
 
     id = Column(Integer, primary_key=True)
 
-    time = Column(Integer)
-    skips = Column(Integer)
-    play_count = Column(Integer)
-    last_play = Column(Date)
+    time = Column(Integer, default=0)
+    skips = Column(Integer, default=0)
+    play_count = Column(Integer, default=0)
+    last_play = Column(Date, default=None)
 
     # Relationships
     # a stats instance is related to one video ofc
-    stats = relationship("Videos")
+    video = relationship("Video", back_populates="stats")
     video_id = Column(Integer, ForeignKey("videos.id"))
 
-    def __init__(self, title, release_date):
-        self.title = title
-        self.release_date = release_date
+    def __init__(self, video_id):
+        self.video_id = video_id
 
     @staticmethod
-    def add_data(
-        video_id: int, title: str, time: int, skipped: bool = False, session=None
-    ):
+    def add_data(video_id: int, time: int, skipped: bool = False, session=None):
         """
-        Adds the given song to the history db, incrementing the time played by time &
-        adding a skip to the count if skipped is true
+        Updaates data in the stats instance, incrementing the time played by time,
+        adding a skip to the count if skipped is true, and addinig to playcount
         - if the song is not found a new entry is made
         - sets last_play to current time
-        - source_id + source should be unique, this is how we find the song
 
         video_id:   the fkey to the video
-        title:      the string title of the song
         time:       the time in seconds that the song played (ie less if skipped or error)
         skipped:    if the song was skipped, false if played all the way through
         session:    sql alchemy session to use if specified
         """
-        # TODO
 
+        if session is None:
+            raise ValueError("Session cannot be None")
 
-#     @staticmethod
-#     def add_song(id, title, time, user_id, source="yt"):
-#         """
-#         Adds the given song to the history db, incrementing the time played by time,
-#         if the song is not found a new entry is made
+        stats_entry = session.query(Stats).filter_by(video_id=video_id).first()
 
-#         id:     id of the song (youtube->https://www.youtube.com/watch?v=[id])
-#         title:  the string title of the song
-#         time:   the time in seconds that the song played (ie less if skipped or error)
-#         source: the flag of the site its from
-#         """
+        if stats_entry is None:
+            return
+            # TODO probably raise an error here instead
 
-#         # insert or update data
-#         [did] = HistoryDB.upsert(
-#             {"id": id, "title": title, "source": source}, Query().id == id
-#         )
+        # Update the stats entry
+        stats_entry.time += time
+        stats_entry.play_count += 1
 
-#         # set initial values if needed
-#         # this could be much cleaner but I dont feel like it
-#         HistoryDB.update({"time": 0}, ~Query().time.exists())
-#         HistoryDB.update({"count": 0}, ~Query().count.exists())
+        if skipped:
+            stats_entry.skips += 1
 
-#         # update the time and count fields
-#         HistoryDB.update(add("time", time), doc_ids=[did])
-#         HistoryDB.update(increment("count"), doc_ids=[did])
+        stats_entry.last_play = datetime.now()
 
-# # TODO retrieve the history and make viewable through /history, atm just saving the history
-
+        session.commit()

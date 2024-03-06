@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, BigInteger, Boolean
 from sqlalchemy.orm import relationship
-from database.base import Base
+from .base import Base
 
 
 class Users(Base):
@@ -18,9 +18,9 @@ class Users(Base):
 
     id = Column(Integer, primary_key=True)
     # telegram ids can be held in a 64 bit signed int for sure
-    telegram_id = Column(BigInteger)
-    mute = Column(Boolean)
-    admin = Column(Boolean)
+    telegram_id = Column(Integer)
+    mute = Column(Boolean, default=False)
+    admin = Column(Boolean, default=False)
 
     @staticmethod
     def find_or_create(telegram_id, session=None):
@@ -28,14 +28,24 @@ class Users(Base):
         find a user by their telegram_id if they exist,
         if they do not exist then create a record and return it
         """
-        # TODO
+
+        if session is None:
+            raise ValueError("Session cannot be None")
+
+        user = session.query(Users).filter_by(telegram_id=telegram_id).first()
+
+        if user is None:
+            # If the user does not exist, create a new entry
+            user = Users(telegram_id=telegram_id)
+            session.add(user)
+            session.commit()
+
+        return user
 
     @staticmethod
-    def update(telegram_id, mute=None, session=None):
-        # TODO maybe generalize an update method across these classes
-        # would be nice if the class interface built into sqlalchemy works but
-        # im not sure it does cause of linking to flask-sqlalchemy
+    def update(telegram_id, mute=None, admin=None, session=None):
         """
-        simple update query wrapper
+        simple update query wrapper,
+        if not none update the values for the related user
         """
         # TODO

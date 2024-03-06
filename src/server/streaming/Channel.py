@@ -10,9 +10,9 @@ from .VideoStreamer import VideoStreamer
 from .Video import Video
 from queue import Queue
 
-# from database import QueueInterface, History, Video
+from database import QueueInterface
 
-from pprint import pprint
+# from database import QueueInterface, History, Video
 
 # at what point does downloading happen?
 # that shoul;d probably be managed by the channel?
@@ -24,14 +24,14 @@ class Channel:
     def __init__(
         self,
         channel_id,
-        pretty_name,
+        title,
         host,
         port,
     ):
         # the streamer instance which will stream all of the vids
         self.streamer = VideoStreamer(host=host, port=port, get_next=self.get_next)
 
-        self.pretty_name = pretty_name
+        self.title = title
 
         # the thread that the video streamer will be running in
         # gotta be seperate so we dont hold up reactions
@@ -42,7 +42,7 @@ class Channel:
         self.current: Video = None
         # queue holds all songs (currently playing should be 0)
         # TODO add curretly playing attribute to queue table as a backup.
-        # self.db = QueueInterface(channel_id)
+        self.db = QueueInterface(channel_id)
 
         self.actionQueue = Queue()
 

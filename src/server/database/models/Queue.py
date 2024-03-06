@@ -1,7 +1,6 @@
-from sqlalchemy import Column, Integer, String, Date, ForeignKey
+from sqlalchemy import Column, Integer, String, Date, ForeignKey, update, func
 from sqlalchemy.orm import relationship
-from streaming.Video import Video
-from database.base import Base
+from .base import Base
 
 
 class Queue(Base):
@@ -12,6 +11,7 @@ class Queue(Base):
     id:         int, unique id for the queue item
     history_id  int, fkey to the history table
                 (history table includes timing info aand fkeys to user & video)
+    position    int, the position in the queue
     """
 
     __tablename__ = "queue"
@@ -22,7 +22,6 @@ class Queue(Base):
     #   each video owns a stats instance, which is just more details on it
     history = relationship("History")
     history_id = Column(Integer, ForeignKey("history.id"))
-
 
 
 class QueueInterface:
@@ -40,11 +39,11 @@ class QueueInterface:
         """
         self.channel = channel
 
-    def length(self):
+    def length(self, session=None):
         """
         Return the length of the channel's queue
         """
-        # TODO
+        return session.query(Queue).filter_by(channel_id=self.channel).count()
 
     def is_empty(self):
         """
@@ -52,61 +51,133 @@ class QueueInterface:
         """
         return self.length() == 0
 
-    def enqueue(self, history_id: int, video: Video = None):
+    def enqueue(self, history_id: int, video=None, session=None):
         """
         Add the item into the queue, can do with just history id, or
         use an instance of the video class to add (which should have history id in it)
         """
-        # TODO
 
-    def dequeue(self):
+        if video is not None:
+            history_id = video.history_id
+
+        if session is None:
+            raise ValueError("Session cannot be None")
+
+        # query for the position number
+        last_position = (
+            session.query(func.max(Queue.position))
+            .filter_by(channel_id=self.channel)
+            .scalar()
+        )
+        position = 0 if last_position is None else last_position + 1
+
+        queue_item = Queue(history_id=history_id, position=position)
+        session.add(queue_item)
+        session.commit()
+
+        # TODO maybe return the position picked so that we can tell if it was the new first element
+
+    def dequeue(self, session=None):
         """
         Remove the first element of the queue, the one that was currently playing
 
         for convienence return the new front of the queue
         """
-        # TODO
+        if session is None:
+            raise ValueError("Session cannot be None")
 
-    def get(self, index: int):
+        front_item = (
+            session.query(Queue).filter_by(channel_id=self.channel, position=0).first()
+        )
+
+        if front_item:
+            session.delete(front_item)
+
+            # Update positions of remaining items in the queue
+            session.execute(
+                update(Queue)
+                .filter_by(channel_id=self.channel)
+                .values(position=Queue.position - 1)
+            )
+            session.commit()
+
+        return self.peek()
+
+    def get(self, index: int, session=None):
         """
         Get the video at the index
         """
         if self.is_empty():
             return None
-        # TODO get by idx
 
-    def peek(self):
+        if session is None:
+            raise ValueError("Session cannot be None")
+
+        queue_item = (
+            session.query(Queue)
+            .filter_by(channel_id=self.channel, position=index)
+            .first()
+        )
+
+        return queue_item
+
+    def peek(self, session=None):
         """
         Check the first item in the queue, (should be current)
         """
         if self.is_empty():
             return None
 
-        return self.get(0)
+        return self.get(0, session)
 
     """
     functions below are more related to bot management than queue functionality
     """
 
-    def skip(self, amount: int = 1):
+    def skip(self, amount: int = 1, session=None):
         """
         skip the currently playing song + amount - 1 next songs, None if empty
         """
-        # TODO
+        if session is None:
+            raise ValueError("Session cannot be None")
 
-    def remove(self, idx: int):
+        for _ in range(amount):
+            self.dequeue(session)
+
+    def remove(self, idx: int, session=None):
         """
         remove the song at index idx from the queue
         """
-        # TODO
+        if self.is_empty():
+            return None
 
-    def total_time(self):
+        if session is None:
+            raise ValueError("Session cannot be None")
+
+        queue_item = (
+            session.query(Queue)
+            .filter_by(channel_id=self.channel, position=idx)
+            .first()
+        )
+
+        if queue_item:
+            session.delete(queue_item)
+            session.commit()
+
+    def total_time(self, session=None):
         """
         Calculate the current length of the queue,
         excluding the currently playing song
         """
-        # TODO
         # get all except 0 and return a sum
 
+        if session is None:
+            raise ValueError("Session cannot be None")
 
-from streaming.Video import Video
+        queue_items = (
+            session.query(Queue)
+            .filter_by(channel_id=self.channel)
+            .filter(Queue.position > 0)
+            .all()
+        )
+        return sum(item.history.time for item in queue_items) if queue_items else 0

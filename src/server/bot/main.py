@@ -17,7 +17,7 @@ from bot.handlers.error import error_handler
 TOKEN = load_config("token")
 
 
-def start() -> None:
+def launch() -> None:
     """Run the bot."""
     context_types = ContextTypes(context=FartherContext)
     application = (
@@ -26,7 +26,7 @@ def start() -> None:
 
     # Register commands
     application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("add", add))
+    # application.add_handler(CommandHandler("add", add))
 
     # the error handler
     application.add_error_handler(error_handler)
@@ -36,4 +36,4 @@ def start() -> None:
 
 
 if __name__ == "__main__":
-    start()
+    launch()

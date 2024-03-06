@@ -3,7 +3,7 @@ from telegram import Update
 
 from streaming import CHANNELS, CHANNEL_FARTHER_ID, Channel
 from downloaders import DOWNLOADERS, lookup, search
-from database import Users
+from database import Users, Session
 
 
 class FartherContext(ContextTypes.DEFAULT_TYPE):
@@ -25,6 +25,9 @@ class FartherContext(ContextTypes.DEFAULT_TYPE):
         # search the downloaders
         self.search = search
 
+        # create a session to use in the context of this update
+        self.session = Session()
+
     @classmethod
     def from_update(cls, update: object, application: Application) -> "FartherContext":
         """
@@ -36,6 +39,27 @@ class FartherContext(ContextTypes.DEFAULT_TYPE):
 
         if isinstance(update, Update) and update.effective_user:
             # ensure the user exists & attach them to context
-            context.dbuser = Users.find_or_create(update.effective_user.id)
+
+            context.dbuser = Users.find_or_create(
+                update.effective_user.id, session=context.session
+            )
 
         return context
+
+    def cleanup(self):
+        """
+        Close anything in the context that needs to be closed
+        """
+        if self.session:
+            self.session.close()
+
+    def __del__(self):
+        """
+        happens when the class instance is being deleted by python,
+        not very clean but it's simple and we're not too worried
+        abt the speed of cleanup, just that it does happen
+
+        # NOTE would be nice if the callback context had an option for cleanup
+        most things like this do its kinda weird it doesnt
+        """
+        self.cleanup()

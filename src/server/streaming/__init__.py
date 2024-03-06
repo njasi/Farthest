@@ -1,21 +1,39 @@
 from streaming.Channel import Channel
+from database import Session, Channels
 
 CHANNEL_FARTHER_ID = 0
+CHANNELS = {}
 
+
+def init():
+    """
+    Intialize all of the backend streaming stuff,
+     - channel class instances etc
+    """
+    load_channels()
 
 def load_channels():
     """
-    # TODO load from config or load from database?
+    load the channels from the database
     """
+    global CHANNELS
+    print("Loading Channels...")
 
-    print("Loading Channels")
+    channels = []
 
-    channel0 = Channel(channel_id=1, host="localhost", pretty_name="Farther", port=8085)
+    with Session() as session:
+        channels = session.query(Channels).all()
 
-    # start worker threads
-    channel0.start_channel()
+    channel_map = {}
+    for channel in channels:
+        channel_map[channel.id] = Channel(
+            channel_id=channel.id,
+            host=channel.hostname,
+            title=channel.title,
+            port=channel.port,
+        )
+        # start worker threads
+        channel_map[channel.id].start_channel()
+        print(f"\tStarted Channel {channel.id}, {channel.title}")
 
-    return {0: channel0}
-
-
-CHANNELS = load_channels()
+    CHANNELS = channel_map
