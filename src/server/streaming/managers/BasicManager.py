@@ -7,7 +7,6 @@ from telegram.ext import ContextTypes
 from telegram.error import BadRequest
 
 from ..VideoStreamer import VideoStreamer
-from ..Video import Video
 from queue import Queue
 
 from database import QueueInterface, Session
@@ -96,10 +95,11 @@ class BasicManager:
 
         return remaining_time
 
-    def queue_to_html(self, start_idx=0, page_size=10):
+    def queue_to_telegram(self, start_idx=0, page_size=10):
         """
         Display the current playlist queue as an html formatted string,
-        showing page_size videos at a time
+        meant to be displayed in telegram
+            - shows page_size videos at a time starting at start_idx
         """
 
         result = ""
@@ -108,9 +108,11 @@ class BasicManager:
             result = "<b>The queue is empty.</b>\nUse /add to add things to the queue"
         else:
             result = f"Queue ({datetime.timedelta(seconds=self.queue_get_length())})"
-            # TODO add the total time
-            # for i, video in enumerate(self.playlist[start_idx : start_idx + page_size]):
-            #     result += f"\n[{i}] {video}"
+
+            for i, video in enumerate(
+                self.db.get_range(start_idx, page_size, self.session)
+            ):
+                result += f"\n[{i}] {video}"
         return result
 
     """
@@ -118,15 +120,21 @@ class BasicManager:
     """
 
     def start_channel(self):
+        """
+        Start the channel worker thread
+        """
         self.thread = threading.Thread(target=self.process_actions)
         self.thread.start()
+        # TODO switch to a logger
         print(f"\t[Channel {self.channel_id}]: Started Worker thread")
+
 
     def stop_channel(self):
         """
         Stop the currently playing stream
 
-        # TODO: does this remove channel from like the bots channel list?
+        # TODO: does this remove channel from the bots channel list?
+                should the bot even access the channel list?
         """
         if self.thread and self.thread.is_alive():
             self.streamer.kill()
@@ -159,45 +167,56 @@ class BasicManager:
         self.actionQueue.put(action)
 
     def play(self):
-        if self.current is None and len(self.queue) > 0:
-            # if current is empty and there is item in queue
-            # think that would imply its not got any going currently, but should idk
+        """
+        Tell the streamer to play,
+            - if streamer is empty tell it to start streaming
+              if theres no new videos this wont do anything,
+              but it should prevent deadlock
+        """
+        if self.streamer.empty:
+            # if the streamer was empty we need to jumpstart it
+            # ie itll grab a new video with get next
             self.streamer.stream()
 
         self.streamer.play()
 
     def pause(self):
+        """
+        Tell the streamer to pause
+        """
         self.streamer.pause()
 
     def skip(self, amount=1):
         """
         Skip the given amount of songs starting with the currently playing song
         """
-        # update the queues
-        skipped = self.queue[0 : amount - 1]
-        self.queue = self.queue[amount - 1 :]
-        self.db.skip(amount=amount)
+        # update the database by skipping the requested amount (ie just removing)
+        skipped = self.db.skip(amount=amount)
 
-        # videostreamer asks for next, which will have accounted for the skipped already
+        # now we tell the streamer there was a skip, so it stops playing the current one
+        # and then asks for new content from the channel manager's get_next function
         self.streamer.skip()
         return skipped
 
-    def add(self, video: Video):
+    def add(self, video):
         """
-        add video to queue. If queue is empty & currently playing is none
-        it gets played right away
+        add video to queue.
+            - If queue is empty & currently playing is none
+              it gets played right away
+            - otherwise its just added to the queue (history & queue entry made)
         """
 
-        # this is a reasonable place to start the downloads, but how
-        # should it be formatted
-        self.queue.append(video)
-        Users.add_play(video.length, video.user_id)
-        self.db.add(video.get_id(), video.title, video.length, video.url, video.user_id)
+        # TODO remove the test print
+        print(video)
+        return
 
-        # if its not currently playing anything
-        # TODO make a moore competent check lol
+        # this is a reasonable place to start the downloads,
+        # but how should it be formatted
+        # TODO decide how to handle this, db video instance?
+
+        # if its not currently playing anything, we will want to trigger it
+        # then it will request the content with get_next
         if self.streamer.empty:
-            #
             self.streamer.stream()
 
         # already things in the queue
@@ -206,18 +225,11 @@ class BasicManager:
         """
         remove the item at the specified position in the queue
 
-        -1 => currently paying song, technically not in queue,
-              but include for conciseness
-        0 => next song (top of queue)
+        0 => currently paying song
         n => song n away from the top of the queue
         """
-        if idx == -1:
-            return self.skip()
 
-        vid = self.queue[idx]
-        del self.queue[idx]
-        self.db.remove(idx)
-        return vid
+        return self.db.remove(idx=idx, session=self.session)
 
     # def add_to_playlist(self, video):
     #     if len(self.playlist) == 0:

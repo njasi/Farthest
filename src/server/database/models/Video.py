@@ -5,6 +5,8 @@ from sqlalchemy.orm.exc import NoResultFound
 from .base import Base
 from database.models.Stats import Stats
 
+from downloaders.Result import Result
+
 
 class Video(Base):
     """
@@ -14,10 +16,12 @@ class Video(Base):
     id:                 int, unique id for the model
     title:              str, the title of the song
     description:        str, any description given to the video
+    length              int, video length in seconds
     source:             str, the flag of the site that it originated from
     source_id:          str, the uid that the source uses: youtube->https://www.youtube.com/watch?v=[id]
     url                 str, the url for the video
     resource_url        str, the url of the video resource itself
+    thumbnail:          thumbnail for the video (usually url from search result)
     downloaded:         bool, if the video has been downloaded
     downloaded_path     str, the path of the downloaded resource
     """
@@ -29,12 +33,16 @@ class Video(Base):
     # basic details of the video
     title = Column(String)
     description = Column(String)
+    length = Column(Integer)
 
     # original source info
     source = Column(String(8))  # the source flag shld be small so
     source_id = Column(String)
     url = Column(String)
     resource_url = Column(String)
+
+    # extra details that will only show up on webclient
+    thumbnail = Column(String)
 
     # internal info
     downloaded = Column(Boolean, default=False)
@@ -44,10 +52,6 @@ class Video(Base):
     #   each video owns a stats instance, which is just more details on it
     stats = relationship("Stats")
 
-    def __init__(self, title, release_date):
-        self.title = title
-        self.release_date = release_date
-
     @staticmethod
     def find_or_create(
         source: str,
@@ -56,7 +60,11 @@ class Video(Base):
         description: str = None,
         url: str = None,
         resource_url: str = None,
+        thumbnail: str = None,
+        downloaded: bool = None,
+        downloaded_path: str = None,
         session=None,
+        **kwargs,
     ):
         """
         Adds the video to the video db, and returns it
@@ -64,13 +72,17 @@ class Video(Base):
         - source_id + source should be unique, how to check if the song has been played before
         - if creating the new entry make a related stats entry as well
 
-        source:         the flag of the site its from ("yt", "test", etc)
-        source_id:      id of the song (youtube->https://www.youtube.com/watch?v=[id])
-        title:          the string title of the video
-        description:    the descripton of the video, for something like yt its the literal description section
-        url:            the url to the page that has the video
-        resource_url    url to the actual video file
-        session:        sqlalchemy session to use
+        source:             the flag of the site its from ("yt", "test", etc)
+        source_id:          id of the song (youtube->https://www.youtube.com/watch?v=[id])
+        title:              the string title of the video
+        description:        the descripton of the video, for something like yt its the literal description section
+        url:                the url to the page that has the video
+        resource_url:       url to the actual video file
+        thumbnail:          thumbnail for the video (usually url from search result)
+        downloaded:         if the video has been downloaded
+        downloaded_path:    the path the video was downloaded to
+        session:            sqlalchemy session to use
+        kwargs:             just to handle the extra parts in a results object we dont care abt
         """
 
         if session is None:
@@ -94,6 +106,9 @@ class Video(Base):
                 description=description,
                 url=url,
                 resource_url=resource_url,
+                thumbnail=thumbnail,
+                downloaded=downloaded,
+                downloaded_path=downloaded_path,
             )
             # add the video, then add stats & commit
             session.add(video)
@@ -103,4 +118,32 @@ class Video(Base):
             session.add(stats)
             session.commit()
 
+        return video
+
+    @staticmethod
+    def add_result(result: Result, session=None):
+        """
+        wrapper for ease of use, basically call find&create and then update
+
+        result:     result instance from a downloader
+        session:    sqlalchemy session to use
+        """
+        # splat the result dict into the func
+        video = Video.find_or_create(**result.__dict__, session=session)
+
+        # update the video from the result
+        updated = False
+        for field in result.__dict__:
+            val = result.__dict__[field]
+            if (
+                val is not None
+                and hasattr(video, field)
+                and not video.__getattribute__(field) == val
+            ):
+                video.__setattr__(field, val)
+                updated = True
+
+        if updated:
+            session.commit()
+            
         return video

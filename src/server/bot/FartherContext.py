@@ -2,7 +2,6 @@ from telegram.ext import Application, ContextTypes
 from telegram import Update
 
 from streaming import CHANNELS, CHANNEL_FARTHER_ID
-from downloaders import DOWNLOADERS, lookup, search
 from database import Users, Session
 
 
@@ -19,11 +18,10 @@ class FartherContext(ContextTypes.DEFAULT_TYPE):
     ):
         super().__init__(application=application, chat_id=chat_id, user_id=user_id)
 
-        # for now we dont really need other channels ig
+        # attach the farther channel & all other channels
         self.farther_channel = CHANNELS[CHANNEL_FARTHER_ID]
+        self.channels = CHANNELS
 
-        # search the downloaders
-        self.search = search
 
         # create a session to use in the context of this update
         self.session = Session()

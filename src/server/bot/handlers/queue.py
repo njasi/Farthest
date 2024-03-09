@@ -33,14 +33,14 @@ async def queue(update: Update, context: FartherContext):
         try:
             # if the args are good for add handler just do that instead lol
             parse_args(add_parser, context)
-            add(update, context)
+            await add(update, context)
             return
         except ParserError:
             # assume the query was for the /queue command for now
             raise og
 
     await context.bot.send_message(
-        text = context.farther_channel.queue_to_html(),
+        text = context.farther_channel.queue_to_telegram(),
         parse_mode = "HTML",
         chat_id = update.effective_chat.id,
     )

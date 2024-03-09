@@ -147,8 +147,12 @@ class QueueInterface:
         if session is None:
             raise ValueError("Session cannot be None")
 
+        skipped = [self.peek(session=session)]
         for _ in range(amount):
-            self.dequeue(session)
+            skipped += [self.dequeue(session)]
+
+        # do all but the last, cause of dequque returning the new front
+        return skipped[:-1]
 
     def remove(self, idx: int, session=None):
         """
@@ -160,6 +164,7 @@ class QueueInterface:
         if session is None:
             raise ValueError("Session cannot be None")
 
+        # get the one to remove
         queue_item = (
             session.query(Queue)
             .filter_by(channel_id=self.channel, position=idx)
@@ -167,8 +172,42 @@ class QueueInterface:
         )
 
         if queue_item:
+            # delete it duh
             session.delete(queue_item)
+
+            # update the positons of the ones after it
+            session.execute(
+                update(Queue)
+                .filter_by(channel_id=self.channel)
+                .values(position=Queue.position > idx)
+            )
+
             session.commit()
+
+            return queue_item
+        return None
+
+    def get_range(self, idx: int = 0, amount: int = 0, session=None):
+        """
+        Get the queue elements with a position >=idx
+        and <idx + amount
+
+        idx:        int, the index to start at
+        amount:     int, the amount of elements to get after idx
+        session:    the sqlalchemy session to use
+        """
+        if amount <= 0:
+            return []
+
+        queue_elements = (
+            session.query(Queue)
+            .filter(Queue.position >= idx)
+            .filter(Queue.position < idx + amount)
+            .order_by(Queue.position)
+            .all()
+        )
+
+        return queue_elements
 
     def total_time(self, session=None):
         """

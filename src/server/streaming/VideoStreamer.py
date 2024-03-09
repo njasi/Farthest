@@ -1,5 +1,4 @@
 import vlc
-from .Video import Video
 
 
 class VideoStreamer:

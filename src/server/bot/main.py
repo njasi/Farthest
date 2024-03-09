@@ -27,8 +27,8 @@ def launch() -> None:
 
     # Register commands
     application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("queue", queue))
-    # application.add_handler(CommandHandler("add", add))
+    application.add_handler(CommandHandler(["queue", "q"], queue))
+    application.add_handler(CommandHandler(["add", "a"], add))
 
     # the error handler
     application.add_error_handler(error_handler)
