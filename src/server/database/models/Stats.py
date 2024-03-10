@@ -31,17 +31,14 @@ class Stats(Base):
 
     # Relationships
     # a stats instance is related to one video ofc
-    video = relationship("Video", back_populates="stats")
+    video = relationship("Video", back_populates="stats", uselist=False)
     video_id = Column(Integer, ForeignKey("videos.id"))
-
-    def __init__(self, video_id):
-        self.video_id = video_id
 
     @staticmethod
     def add_data(video_id: int, time: int, skipped: bool = False, session=None):
         """
         Updaates data in the stats instance, incrementing the time played by time,
-        adding a skip to the count if skipped is true, and addinig to playcount
+        adding a skip to the count if skipped is true, and adding to playcount
         - if the song is not found a new entry is made
         - sets last_play to current time
 
@@ -70,3 +67,19 @@ class Stats(Base):
         stats_entry.last_play = datetime.now()
 
         session.commit()
+
+    def __str__(self):
+        """
+        General case __str__ method cause im tired of memory addrs in debug
+        """
+        res = f"{type(self).__name__}("
+        # add attrs to ignore here
+        ignore = []
+
+        columns = [m.key for m in self.__table__.columns]
+
+        for key in columns:
+            if key not in ignore:
+                res += f"\n\t{key} = {getattr(self, key)}"
+        res += ")\n"
+        return res

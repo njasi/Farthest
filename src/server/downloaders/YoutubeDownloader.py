@@ -3,7 +3,7 @@ import yt_dlp
 import json
 
 from .exceptions import *
-from .Result import Result, TYPE_PLAYLIST
+from .Result import Result, TYPE_PLAYLIST, TYPE_LIVESTREAM
 from .Downloader import Downloader
 
 
@@ -35,6 +35,9 @@ class YoutubeDownloader(Downloader):
         (list only to deal with playlists)
         """
 
+        with open("test_live.json", "w+") as file:
+            file.write(json.dumps(entry))
+
         base = Result(
             source="yt",
             source_id=entry["id"],
@@ -43,8 +46,14 @@ class YoutubeDownloader(Downloader):
             description=entry["description"],
         )
 
-        # check if playlist and parse all the vids in it
-        if "_type" in entry and entry["_type"] == "playlist":
+        if "is_live" in entry and entry["is_live"]:
+            # check if its a livestream
+            base.type = TYPE_LIVESTREAM
+            base.thumbnail = entry["thumbnail"]
+            # TODO pick a format as the resource_url if we ever want to
+            # play livestreams
+        elif "_type" in entry and entry["_type"] == "playlist":
+            # check if playlist and parse all the vids in it
             base.type = TYPE_PLAYLIST
             base.videos = []
             for e in entry["entries"]:

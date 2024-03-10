@@ -49,3 +49,19 @@ class Users(Base):
         if not none update the values for the related user
         """
         # TODO
+
+    def __str__(self):
+        """
+        General case __str__ method cause im tired of memory addrs in debug
+        """
+        res = f"{type(self).__name__}("
+        # add attrs to ignore here
+        ignore = []
+
+        columns = [m.key for m in self.__table__.columns]
+
+        for key in columns:
+            if key not in ignore:
+                res += f"\n\t{key} = {getattr(self, key)}"
+        res += ")\n"
+        return res

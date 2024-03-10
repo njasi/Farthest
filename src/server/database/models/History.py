@@ -46,7 +46,6 @@ class History(Base):
     channel = relationship("Channels")
     channel_id = Column(Integer, ForeignKey("channels.id"))
 
-
     @staticmethod
     def create(
         video_id: int,
@@ -98,3 +97,19 @@ class History(Base):
             history_instance.skipped = skipped
 
             session.commit()
+
+    def __str__(self):
+        """
+        General case __str__ method cause im tired of memory addrs in debug
+        """
+        res = f"{type(self).__name__}("
+        # add attrs to ignore here
+        ignore = []
+
+        columns = [m.key for m in self.__table__.columns]
+
+        for key in columns:
+            if key not in ignore:
+                res += f"\n\t{key} = {getattr(self, key)}"
+        res += ")\n"
+        return res

@@ -57,12 +57,24 @@ class Result:
         self.videos = videos
 
     def __str__(self):
+        """
+        General case __str__ method cause im tired of memory addrs in debug
+        """
+
         def limit_string(string, amt=25):
             """
             Small helper made to limit the amount of text printed from the descrpton
             """
-            if len(string) > amt:
+            if isinstance(type(string), str) and len(string) > amt:
                 return string[:amt] + "..."
             return string
 
-        return f"Result(\n\tsource = {self.source}\n\tsource_id = {self.source_id}\n\turl = {self.url}\n\ttitle = {self.title}\n\tdescription = {limit_string(self.description)}\n\tlength = {self.length}\n\tresource_url = {self.resource_url}\n\tthumbnail = {self.thumbnail}\n\tdownloaded = {self.downloaded}\n\tdownloaded_path = {self.downloaded_path})"
+        res = f"{type(self).__name__}("
+        # add attrs to ignore here
+        ignore = ["description"]
+
+        for key in self.__dict__:
+            if key not in ignore:
+                res += f"\n\t{key} = {limit_string(getattr(self, key))}"
+        res += ")\n"
+        return res

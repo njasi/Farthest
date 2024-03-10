@@ -74,7 +74,6 @@ class BasicManager:
 
         # this dequeue returns the new head, so it also does the next element
         next = self.db.dequeue(self.session)
-        print(next)
 
         return next
 
@@ -128,7 +127,6 @@ class BasicManager:
         # TODO switch to a logger
         print(f"\t[Channel {self.channel_id}]: Started Worker thread")
 
-
     def stop_channel(self):
         """
         Stop the currently playing stream
@@ -149,8 +147,8 @@ class BasicManager:
             # wait until there is an action
             action = self.actionQueue.get()
 
-            print("Channel: processing action")
-            print(action)
+            # print("Channel: processing action")
+            # print(action)
 
             # run the action
             action.run(self)
@@ -207,7 +205,7 @@ class BasicManager:
         """
 
         # TODO remove the test print
-        print(video)
+        print(f"Added video id: {video.id}")
         return
 
         # this is a reasonable place to start the downloads,

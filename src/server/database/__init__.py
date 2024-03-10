@@ -1,6 +1,6 @@
 import os
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, Session as NormalSession
+from sqlalchemy.orm import sessionmaker, scoped_session
 
 # import all the models
 from .models.Queue import Queue, QueueInterface
@@ -24,12 +24,9 @@ URL = "postgresql://{}:{}@{}:{}/{}".format(db_user, db_pass, db_host, db_port, d
 
 # make the engine
 engine = create_engine(URL)
-Session = sessionmaker(bind=engine)
+session_factory = sessionmaker(bind=engine)
+Session = scoped_session(session_factory)
 
 
 def init():
     metadata.create_all(bind=engine)
-
-    # session = NormalSession(bind=engine)
-    # users = session.query(Users).all()
-    # session.close()

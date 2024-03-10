@@ -63,11 +63,11 @@ def lookup_flag(flag):
         raise NoDownloaderFound
 
 
-def search(term, flag="yt", amount = 1):
+def search(term, flag="yt", amount=1):
     """
-    Search by
+    Search by term, test if its a url as well, and get the details instead
     """
-    # check if it's a "url" with basic regix
+    # check if it's a "url" with basic regex
     if re.match(URL_REGEX, term):
         try:
             downloader = lookup_url(term)
