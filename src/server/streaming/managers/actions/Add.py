@@ -24,7 +24,7 @@ class Add(ChannelAction):
     def run(self, chan: ChannelManager):
         # add the video instance to this session
         # could add by id with no issues if there r problems
-        video = Video.find_by_id(self.video_id, session=chan.session)
+        video = Video.find_by_id(self.video_id, session=self.session)
 
         # ask for the time before the new one is added
         time_until = chan.queue_get_length()
@@ -54,7 +54,7 @@ class Add(ChannelAction):
             return
 
         message = (
-            f"<b>Added 'song'</b> (plays in {datetime.timedelta(seconds=time_until)})"
+            f"<b>Added 'song'</b> (plays in {datetime.timedelta(seconds=time_until)})\n"
             f"<a href='{video.url}'>{video.title}</a>\n\n"
         )
         if video.stats.play_count == 0:

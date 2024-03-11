@@ -2,7 +2,9 @@ from time import time
 from telegram import Update
 from telegram.ext import ContextTypes
 
+from database import Session
 from ..BasicManager import BasicManager as ChannelManager
+
 
 class ChannelAction:
     """
@@ -23,6 +25,9 @@ class ChannelAction:
         self.update = update
         self.context = context
 
+        # session obj for this action
+        self.session = Session()
+
         # additional info
         self.created_at = time()
         self.__dict__.update(**kwargs)
@@ -31,3 +36,20 @@ class ChannelAction:
         """
         implement for each action seperately
         """
+
+    def cleanup(self):
+        self.session.close()
+
+    def __del__(self):
+        """
+        happens when the class instance is being deleted by python,
+        not very clean but it's simple and we're not too worried
+        abt the speed of cleanup, just that it does happen
+
+        since we control the liffecycle of the action instance,
+        this is only in case of an error really
+        """
+        try:
+            self.cleanup()
+        except:
+            pass

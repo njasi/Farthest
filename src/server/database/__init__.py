@@ -24,8 +24,8 @@ URL = "postgresql://{}:{}@{}:{}/{}".format(db_user, db_pass, db_host, db_port, d
 
 # make the engine
 engine = create_engine(URL)
-session_factory = sessionmaker(bind=engine)
-Session = scoped_session(session_factory)
+Session = sessionmaker(bind=engine)
+# Session = scoped_session(session_factory)
 
 
 def init():

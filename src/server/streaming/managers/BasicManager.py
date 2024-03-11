@@ -2,14 +2,13 @@ import threading
 import time
 import datetime
 
+from queue import Queue
 from telegram import Update
 from telegram.ext import ContextTypes
 from telegram.error import BadRequest
 
-from ..VideoStreamer import VideoStreamer
-from queue import Queue
-
 from database import QueueInterface, Session
+from ..VideoStreamer import VideoStreamer
 
 # from database import QueueInterface, History, Video
 
@@ -47,6 +46,7 @@ class BasicManager:
         self.thread = None
 
         # make a session for this instance to interact with the db
+        # should not be used from the worker thread
         self.session = Session()
 
         # queue holds all songs (currently playing should be position 0)
@@ -147,11 +147,13 @@ class BasicManager:
             # wait until there is an action
             action = self.actionQueue.get()
 
-            # print("Channel: processing action")
-            # print(action)
-
-            # run the action
-            action.run(self)
+            # run the action & then cleanup
+            try:
+                action.run(self)
+            except Exception as e:
+                print("process_action error", e)
+            finally:
+                action.cleanup()
 
     """
     STREAM ACTIONS
@@ -205,7 +207,7 @@ class BasicManager:
         """
 
         # TODO remove the test print
-        print(f"Added video id: {video.id}")
+        print(f"\t[Manager] added video id: {video.id}")
         return
 
         # this is a reasonable place to start the downloads,

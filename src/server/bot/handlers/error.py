@@ -34,6 +34,7 @@ def send_error(error: Exception, update: Update = None, context=None, bot=None):
     bot:        bot to use
     """
 
+    print("error™")
 
     # traceback.format_exception returns the usual python message about an exception, but as a
     # list of strings rather than a single string, so we have to join them together.
@@ -104,6 +105,7 @@ async def error_handler(update: object, context: FartherContext) -> None:
         # rollback the session so no malformed changes save
         context.session.rollback()
     except Exception as e:
+        print("OOPS")
         # TODO may even want to exit the program right here
         logger.error("Error rolling back the session... uh oh:", exc_info=e)
 

@@ -169,7 +169,6 @@ async def add_video(
     """
 
     video = Video.add_result(result=result, session=context.session)
-    print("\tVideo id=", video.id)
 
     # make the action and pass along to the channel manager
     if update_message:
@@ -181,11 +180,12 @@ async def add_video(
             chat_id=message.chat_id,
         )
 
+    print(f"Sending Video(id={video.id})")
     channel.send_action(
         Add(
             update,
             context,
-            loop= asyncio.get_event_loop(),
+            loop=asyncio.get_event_loop(),
             message_id=message.id,
             video_id=video.id,
             announce=update_message,
