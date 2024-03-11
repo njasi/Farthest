@@ -149,6 +149,16 @@ class Video(Base):
 
         return video
 
+    @staticmethod
+    def find_by_id(id, session=None):
+        """
+        find the video by it's id, only written to abstract the database ig
+
+        id:         the id of the video
+        session:    the sqlalchem session to use
+        """
+        return session.query(Video).filter_by(id=id).first()
+
     def __str__(self):
         """
         General case __str__ method cause im tired of memory addrs in debug

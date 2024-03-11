@@ -9,5 +9,5 @@ if __name__ == "__main__":
 
     # import this later cause of farther context needing
     # some things inited first
-    import bot.main as bot
+    import bot
     bot.launch()

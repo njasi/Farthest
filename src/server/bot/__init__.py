@@ -6,16 +6,19 @@ from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import Application, CommandHandler, ContextTypes, Defaults
 
-from bot.FartherContext import FartherContext
-from bot.handlers.start import start
-from bot.handlers.add import add
-from bot.handlers.queue import queue
-from bot.handlers.helpers import load_config
-from bot.handlers.error import error_handler
+from .FartherContext import FartherContext
+from .handlers.start import start
+from .handlers.add import add
+from .handlers.queue import queue
+from .handlers.helpers import load_config
+from .handlers.error import error_handler
 
 
 # load in the needed constants
 TOKEN = load_config("token")
+
+# the app running the bot
+APPLICATION = None
 
 
 def launch() -> None:
@@ -44,6 +47,8 @@ def launch() -> None:
     # Run the bot until the user presses Ctrl-C
     application.run_polling(allowed_updates=Update.ALL_TYPES)
 
+    return application
+
 
 if __name__ == "__main__":
-    launch()
+    APPLICATION = launch()

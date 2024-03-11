@@ -169,6 +169,7 @@ async def add_video(
     """
 
     video = Video.add_result(result=result, session=context.session)
+    print("\tVideo id=", video.id)
 
     # make the action and pass along to the channel manager
     if update_message:
@@ -184,9 +185,9 @@ async def add_video(
         Add(
             update,
             context,
+            loop= asyncio.get_event_loop(),
             message_id=message.id,
-            video=video,
-            loop=asyncio.get_event_loop(),
+            video_id=video.id,
             announce=update_message,
         )
     )
@@ -196,7 +197,7 @@ async def add_playlist(playlist: Result, update, context, message, channel):
     """
     Add a playlst to the queue
 
-    playlist:   the result from  .get_details that we are adding
+    playlist:   the result from .get_details that we are adding
     update:     the telegram update that triggered this
     context:    the telegram context
     message:    the message to edit when responding
@@ -214,6 +215,7 @@ async def add_playlist(playlist: Result, update, context, message, channel):
     time = 0
     for video in playlist.videos:
         time += video.length
+        print("Added from playlist: ", video.title)
         await add_video(video, update, context, message, channel, update_message=False)
 
     # TODO, add starts in n mins message
