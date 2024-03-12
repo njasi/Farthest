@@ -9,7 +9,7 @@ from bot.handlers.helpers import ArgumentParser, ParserError, parse_args
 
 from downloaders import DOWNLOADER_MAP, list_flags, search, lookup_url
 from downloaders.Result import Result, TYPE_PLAYLIST, TYPE_LIVESTREAM
-from downloaders.exceptions import NoDownloaderFound
+from downloaders.exceptions import NoDownloaderFound, FetchError
 
 from streaming.managers import Add
 from database import Video
@@ -65,6 +65,8 @@ async def add(update: Update, context: FartherContext):
             parse_mode="HTML",
             reply_to_message_id=update.message.message_id,
         )
+        # attach the id to the context for error handling below
+        context.menu_id = message.id
 
         details = downloader.get_details(term)
 
@@ -136,6 +138,22 @@ async def add(update: Update, context: FartherContext):
             to_add = random.choice(results)
 
         await add_video(to_add, update, context, message, context.farther_channel)
+
+    except FetchError as e:
+        """
+        catch here so we can edit, but make sure to raise again so
+        the error handler still gets it later.
+
+        # TODO maybe attach a menu_id to the context optionally to edit it there?
+        """
+        await context.bot.edit_message_text(
+            f"<b>Error Getting Link Details:</b>\n\n<pre>{e.msg}</pre>",
+            message_id=context.menu_id,
+            chat_id=update.effective_chat.id,
+        )
+        context.menu_id = None
+
+        raise e
 
     return
 

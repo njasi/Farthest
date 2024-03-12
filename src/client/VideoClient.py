@@ -1,9 +1,11 @@
 import vlc
 import threading
-import time
 import socket
 
 class VideoClient:
+    """
+    Basic class to manage the vlc instance
+    """
     def __init__(self, stream_url):
         self.stream_url = stream_url
         self.instance = vlc.Instance("--no-xlib")
@@ -14,8 +16,6 @@ class VideoClient:
 
     def play_video(self):
         self.player.play()
-        while True:
-            time.sleep(1)
 
     def start_playing(self):
         self.play_thread = threading.Thread(target=self.play_video)
@@ -40,27 +40,12 @@ class VideoClient:
 
     def listen(self, server_address, port):
         """
-        Connect to server socket and listen for commands from the server:
+        Connect to server with socketio and listen for commands:
             - change volume
             - change channel
             - pause / play
             - etc
         """
-        client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        client_socket.connect((server_address, port))
-
-        while True:
-            client_socket.send(data)
-            while client_socket.recv(2048) != "ack":
-                print "waiting for ack"
-            print "ack received!"
-
-        #send disconnect message
-        dmsg = "disconnect"
-        print "Disconnecting"
-        client_socket.send(dmsg)
-
-        client_socket.close()
 
 
 

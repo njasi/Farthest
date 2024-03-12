@@ -31,7 +31,7 @@ class Add(ChannelAction):
         queue = None
 
         try:
-            queue = chan.add(video)
+            queue = chan.add(video, self.session)
 
             # if the adding should not be announced, just return.
             # NOTE: (this happens when a playlist is added)

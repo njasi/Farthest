@@ -1,7 +1,11 @@
-config.json
-config_backup.json
-test.txt
-__pycache__
+# venvs
 .venv
 venv
-src/old
+client_venv
+
+# python stuff
+__pycache__
+
+# secrets
+.env
+.client_secret

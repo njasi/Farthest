@@ -15,3 +15,12 @@ class IncorrectDownloaderException(Exception):
 
 class UnexpectedFileExtension(Exception):
     pass
+
+class FetchError(Exception):
+    """
+    Raised when there is an issue fetching information from
+    a source.
+    """
+
+class DownloadError(Exception):
+    pass

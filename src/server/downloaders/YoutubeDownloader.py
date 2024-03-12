@@ -103,15 +103,17 @@ class YoutubeDownloader(Downloader):
         - might need to use to get information lke video length
         - may also return the resource url
         """
+        try:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                res = ydl.extract_info(url=url, download=False)
 
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            res = ydl.extract_info(url=url, download=False)
+                with open("test_paylist.json", "w") as file:
+                    file.write(json.dumps(res))
 
-            with open("test_paylist.json", "w") as file:
-                file.write(json.dumps(res))
-
-            result = cls.parse_entry_to_result(res)
-            return result
+                result = cls.parse_entry_to_result(res)
+                return result
+        except yt_dlp.DownloadError as e:
+            raise FetchError(e.msg[e.msg.find("[youtube]"):])
 
 
 if __name__ == "__main__":

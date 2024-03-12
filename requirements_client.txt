@@ -1,0 +1,10 @@
+bidict==0.23.1
+cffi==1.16.0
+cryptography==42.0.5
+h11==0.14.0
+pycparser==2.21
+python-engineio==4.9.0
+python-socketio==5.11.1
+python-vlc==3.0.20123
+simple-websocket==1.0.0
+wsproto==1.2.0

@@ -1,18 +1,21 @@
+import os
 import html
 import json
 import traceback
 import logging
 import asyncio
+import tempfile
 
+from datetime import datetime
 from telegram import Update
 from telegram.constants import ParseMode
 
-from bot.handlers.helpers import ParserError, load_config
+from bot.handlers.helpers import ParserError
 from bot.FartherContext import FartherContext
 
 
 TELEGRAM_MESSAGE_CHAR_LIMIT = 4096
-DEVELOPER_CHAT_ID = load_config("admin_chat_id")
+DEVELOPER_CHAT_ID = os.environ["FARTHER_ADMIN_CHAT_ID"]
 
 # Enable logging
 logging.basicConfig(
@@ -23,7 +26,31 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
 
-def send_error(error: Exception, update: Update = None, context=None, bot=None):
+async def send_error_file(message, bot):
+    """
+    Send the error message as a file (used when its too long)
+    - made so the temp file isnt deleted before the request
+    """
+
+    with tempfile.TemporaryFile("r+") as file:
+        file.write(message)
+        file.flush()
+        file.seek(0)
+
+        time_str = str(datetime.now()).replace(" ", "_")
+
+        await bot.send_document(
+            caption="An exception was raised while handling an update.\n\nHowever it was too long to send as a message, check the logs or the attached file.",
+            parse_mode=ParseMode.HTML,
+            chat_id=DEVELOPER_CHAT_ID,
+            document=file,
+            filename=f"ERROR_{time_str}.html",
+        ),
+
+
+def send_error(
+    error: Exception, update: Update = None, context=None, bot=None, loop=None
+):
     """
     Send an error to the admin chat, made here so other parts of the
     code can report an error with no ref to the bot
@@ -33,8 +60,6 @@ def send_error(error: Exception, update: Update = None, context=None, bot=None):
     context:    the context if any
     bot:        bot to use
     """
-
-    print("error™")
 
     # traceback.format_exception returns the usual python message about an exception, but as a
     # list of strings rather than a single string, so we have to join them together.
@@ -68,18 +93,16 @@ def send_error(error: Exception, update: Update = None, context=None, bot=None):
         print("No bot found...")
         return
 
+    if loop is None:
+        loop = asyncio.get_running_loop()
+
     if len(message) > TELEGRAM_MESSAGE_CHAR_LIMIT:
-        asyncio.get_running_loop().call_soon_threadsafe(
-            asyncio.ensure_future,
-            bot.send_message(
-                chat_id=DEVELOPER_CHAT_ID,
-                text="An exception was raised while handling an update\nHowever it was too long to send as a message, check the logs",
-                parse_mode=ParseMode.HTML,
-            ),
-        )
+        # if too long send as file lol
+        loop.call_soon_threadsafe(asyncio.ensure_future, send_error_file(message, bot))
+        return
 
     # Finally, send the message
-    asyncio.get_running_loop().call_soon_threadsafe(
+    loop.call_soon_threadsafe(
         asyncio.ensure_future,
         bot.send_message(
             chat_id=DEVELOPER_CHAT_ID, text=message, parse_mode=ParseMode.HTML
@@ -105,7 +128,6 @@ async def error_handler(update: object, context: FartherContext) -> None:
         # rollback the session so no malformed changes save
         context.session.rollback()
     except Exception as e:
-        print("OOPS")
         # TODO may even want to exit the program right here
         logger.error("Error rolling back the session... uh oh:", exc_info=e)
 

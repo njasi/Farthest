@@ -1,4 +1,4 @@
-import json
+import os
 import argparse
 from datetime import datetime
 from telegram import Update
@@ -6,18 +6,8 @@ from telegram.ext import ContextTypes
 from telegram.error import BadRequest
 
 
-def load_config(key=None, config_path="./config.json"):
-    """Load in the config file, or a var from the file"""
-    with open(config_path) as file:
-        data = json.load(file)
-        if key is None:
-            return data
-        else:
-            return data[key]
-
-
-ADMINS = load_config(key="admins")
-FARTHER_CHAT_ID = load_config(key="farther_chat_id")
+ADMINS = os.environ["FARTHER_ADMINS"]
+FARTHER_CHAT_ID = os.environ["FARTHER_CHAT_ID"]
 
 
 class ParserError(Exception):

@@ -46,7 +46,7 @@ class BasicManager:
         self.thread = None
 
         # make a session for this instance to interact with the db
-        # should not be used from the worker thread
+        # should not be used from the worker thread, stick with the action sessions there
         self.session = Session()
 
         # queue holds all songs (currently playing should be position 0)
@@ -59,21 +59,27 @@ class BasicManager:
     QUEUE MANAGEMENT
     """
 
-    def get_current(self):
+    def get_current(self, session=None):
         """
         Get the currently playing video from the queue
         """
         # TODO map queue obj to video instance
-        return self.db.peek(self.session)
 
-    def get_next(self):
+        if session is None:
+            session = self.session
+
+        return self.db.peek(session)
+
+    def get_next(self, session=None):
         """
         get the next element out of the queue,
         while also removing the front
         """
+        if session is None:
+            session = self.session
 
         # this dequeue returns the new head, so it also does the next element
-        next = self.db.dequeue(self.session)
+        next = self.db.dequeue(session)
 
         return next
 
@@ -81,12 +87,16 @@ class BasicManager:
     BOT HELPERS
     """
 
-    def queue_get_length(self):
+    def queue_get_length(self, session=None):
         """
         Calculate the total remaining time in the playlist,
         including time left in the current video
         """
-        remaining_time = self.db.total_time(self.session)
+
+        if session is None:
+            session = self.session
+
+        remaining_time = self.db.total_time(session)
 
         # if theres a currently playing vid get the remaining time
         if not self.streamer.empty:
@@ -94,22 +104,25 @@ class BasicManager:
 
         return remaining_time
 
-    def queue_to_telegram(self, start_idx=0, page_size=10):
+    def queue_to_telegram(self, start_idx=0, page_size=10, session=None):
         """
         Display the current playlist queue as an html formatted string,
         meant to be displayed in telegram
             - shows page_size videos at a time starting at start_idx
         """
 
+        if session is None:
+            session = self.session
+
         result = ""
 
-        if self.db.is_empty(self.session):
+        if self.db.is_empty(session):
             result = "<b>The queue is empty.</b>\nUse /add to add things to the queue"
         else:
-            result = f"Queue ({datetime.timedelta(seconds=self.queue_get_length())})"
+            result = f"Queue ({datetime.timedelta(seconds=self.queue_get_length(session=session))})"
 
             for i, video in enumerate(
-                self.db.get_range(start_idx, page_size, self.session)
+                self.db.get_range(start_idx, page_size, session=session)
             ):
                 result += f"\n[{i}] {video}"
         return result
@@ -186,29 +199,39 @@ class BasicManager:
         """
         self.streamer.pause()
 
-    def skip(self, amount=1):
+    def skip(self, session, amount=1):
         """
         Skip the given amount of songs starting with the currently playing song
+
+        session: sqlalchemy session to use, should not be channelmanager session
         """
+
+        if session is None:
+            session = self.session
+
         # update the database by skipping the requested amount (ie just removing)
-        skipped = self.db.skip(amount=amount)
+        skipped = self.db.skip(amount=amount, session=session)
 
         # now we tell the streamer there was a skip, so it stops playing the current one
         # and then asks for new content from the channel manager's get_next function
         self.streamer.skip()
         return skipped
 
-    def add(self, video):
+    def add(self, video, session):
         """
         add video to queue.
             - If queue is empty & currently playing is none
               it gets played right away
             - otherwise its just added to the queue (history & queue entry made)
+
+        video:      Video to add to the queue
+        session:    sqlalchemy session to use, should not be channelmanager session
         """
 
-        # TODO remove the test print
+
         print(f"\t[Manager] added video id: {video.id}")
         return
+        # session.
 
         # this is a reasonable place to start the downloads,
         # but how should it be formatted
@@ -221,7 +244,7 @@ class BasicManager:
 
         # already things in the queue
 
-    def remove(self, idx: int):
+    def remove(self, idx: int, session):
         """
         remove the item at the specified position in the queue
 
@@ -230,13 +253,3 @@ class BasicManager:
         """
 
         return self.db.remove(idx=idx, session=self.session)
-
-    # def add_to_playlist(self, video):
-    #     if len(self.playlist) == 0:
-    #         pass
-    #     # TODO stop playing default screen
-    #     self.playlist.append(video)
-
-    # def remove_from_playlist(self, video):
-    #     if video in self.playlist:
-    #         self.playlist.remove(video)

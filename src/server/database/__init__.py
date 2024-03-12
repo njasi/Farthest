@@ -25,6 +25,9 @@ URL = "postgresql://{}:{}@{}:{}/{}".format(db_user, db_pass, db_host, db_port, d
 # make the engine
 engine = create_engine(URL)
 Session = sessionmaker(bind=engine)
+
+# NOTE: better to manage sessions yourself than with the scoped session generator...
+#       easy to make ephermal sessions for telegram updates, actions, etc
 # Session = scoped_session(session_factory)
 
 
