@@ -1,4 +1,4 @@
-from VideoClient import VideoClient
+from StreamPlayer import StreamPlayer
 from secret import ensure_secret
 
 
@@ -64,7 +64,7 @@ class FartherClient:
         self.worker = None
 
         # the video client which plays the stream
-        self.video: VideoClient = None
+        self.player: StreamPlayer = None
 
     def register(self):
         """
@@ -94,5 +94,12 @@ class FartherClient:
         self.register()
         # TODO start worker thread
 
-    def listen(self):
-        pass
+    def listen(self, server_address, port):
+        """
+        Connect to server with socketio and listen for commands:
+            - change volume
+            - change channel
+            - pause / play
+            - etc
+        """
+        # TODO
