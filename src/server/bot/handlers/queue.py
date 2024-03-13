@@ -40,7 +40,7 @@ async def queue(update: Update, context: FartherContext):
             raise og
 
     await context.bot.send_message(
-        text = context.farther_channel.queue_to_telegram(),
-        parse_mode = "HTML",
-        chat_id = update.effective_chat.id,
+        text=context.farther_channel.queue_to_telegram(),
+        chat_id=update.effective_chat.id,
+        disable_web_page_preview=True,
     )

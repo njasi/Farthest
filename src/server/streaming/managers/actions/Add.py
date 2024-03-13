@@ -3,7 +3,7 @@ import datetime
 from telegram import LinkPreviewOptions
 
 from error import send_error
-from database import Video
+from database import Video, Users
 
 from ..BasicManager import BasicManager as ChannelManager
 from .ChannelAction import ChannelAction
@@ -25,13 +25,14 @@ class Add(ChannelAction):
         # add the video instance to this session
         # could add by id with no issues if there r problems
         video = Video.find_by_id(self.video_id, session=self.session)
+        user = Users.find_or_create(self.update.effective_user.id, session=self.session)
 
         # ask for the time before the new one is added
         time_until = chan.queue_get_length()
         queue = None
 
         try:
-            queue = chan.add(video, self.session)
+            queue = chan.add(video, user, self.session)
 
             # if the adding should not be announced, just return.
             # NOTE: (this happens when a playlist is added)

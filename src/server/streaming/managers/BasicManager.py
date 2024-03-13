@@ -7,7 +7,7 @@ from telegram import Update
 from telegram.ext import ContextTypes
 from telegram.error import BadRequest
 
-from database import QueueInterface, Session
+from database import QueueInterface, Session, History
 from ..VideoStreamer import VideoStreamer
 
 # from database import QueueInterface, History, Video
@@ -119,12 +119,15 @@ class BasicManager:
         if self.db.is_empty(session):
             result = "<b>The queue is empty.</b>\nUse /add to add things to the queue"
         else:
-            result = f"Queue ({datetime.timedelta(seconds=self.queue_get_length(session=session))})"
+            result = (
+                f"<b>Queue ({self.db.length(session)} songs: "
+                f"{datetime.timedelta(seconds=self.queue_get_length(session=session))}):</b>"
+            )
 
             for i, video in enumerate(
                 self.db.get_range(start_idx, page_size, session=session)
             ):
-                result += f"\n[{i}] {video}"
+                result += f"\n{video.telegram_str()}"
         return result
 
     """
@@ -217,7 +220,7 @@ class BasicManager:
         self.streamer.skip()
         return skipped
 
-    def add(self, video, session):
+    def add(self, video, user, session):
         """
         add video to queue.
             - If queue is empty & currently playing is none
@@ -228,10 +231,11 @@ class BasicManager:
         session:    sqlalchemy session to use, should not be channelmanager session
         """
 
-
-        print(f"\t[Manager] added video id: {video.id}")
-        return
-        # session.
+        # make history instance and slap into the queue
+        history = History.create(
+            video.id, user.id, self.channel_id, datetime.datetime.now(), session=session
+        )
+        self.db.enqueue(history.id, session=session)
 
         # this is a reasonable place to start the downloads,
         # but how should it be formatted
@@ -239,8 +243,11 @@ class BasicManager:
 
         # if its not currently playing anything, we will want to trigger it
         # then it will request the content with get_next
-        if self.streamer.empty:
-            self.streamer.stream()
+        # TODO play with the streamer
+        # if self.streamer.empty:
+        #     self.streamer.stream()
+
+        return history
 
         # already things in the queue
 

@@ -1,7 +1,11 @@
+import datetime
 from sqlalchemy import Column, Integer, String, Date, ForeignKey, update, func
 from sqlalchemy.orm import relationship, contains_eager
+
 from .base import Base
 from .History import History
+
+TITLE_LENGTH_LIMIT = 40
 
 
 class Queue(Base):
@@ -28,6 +32,27 @@ class Queue(Base):
 
     channel = relationship("Channels")
     channel_id = Column(Integer, ForeignKey("channels.id"))
+
+    def telegram_str(self):
+        """
+        Basically to string method, but meant to be used in a list in telegram
+
+        html formatted string™
+        """
+
+        # chop up the title so we dont have multi line messes
+        title = self.history.video.title
+        title = (
+            (title[:TITLE_LENGTH_LIMIT] + "...")
+            if len(title) > TITLE_LENGTH_LIMIT
+            else title
+        )
+
+        return (
+            f"[{self.position + 1}]"
+            f"\t<a href='{self.history.video.url}'>{title}</a>"
+            f"\t({datetime.timedelta(seconds=self.history.video.length)})"
+        )
 
     def __str__(self):
         """
@@ -93,7 +118,9 @@ class QueueInterface:
         )
         position = 0 if last_position is None else last_position + 1
 
-        queue_item = Queue(history_id=history_id, position=position)
+        queue_item = Queue(
+            history_id=history_id, position=position, channel_id=self.channel
+        )
         session.add(queue_item)
         session.commit()
 
@@ -241,4 +268,4 @@ class QueueInterface:
             .filter(Queue.position > 0)
         )
 
-        return sum(item.history.video.time for item in result) if result else 0
+        return sum(item.history.video.length for item in result) if result else 0

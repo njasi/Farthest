@@ -50,6 +50,7 @@ class History(Base):
     def create(
         video_id: int,
         user_id: int,
+        channel_id: int,
         queue_time: Date,
         start_time: Date = None,
         end_time: Date = None,
@@ -65,6 +66,7 @@ class History(Base):
         history_instance = History(
             video_id=video_id,
             user_id=user_id,
+            channel_id=channel_id,
             queue_time=queue_time,
             start_time=start_time,
             end_time=end_time,
@@ -73,6 +75,7 @@ class History(Base):
 
         session.add(history_instance)
         session.commit()
+        return history_instance
 
     @staticmethod
     def update(id, start_time=None, end_time=None, skipped=True, session=None):
