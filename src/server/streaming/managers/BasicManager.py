@@ -37,10 +37,6 @@ class BasicManager:
         host,
         port,
     ):
-        # the streamer instance which will stream all of the vids
-        self.streamer = VideoStreamer(
-            host=host, port=port, get_next=self.get_next, get_playlist=self.get_playlist
-        )
 
         self.title = title
         self.flag = flag
@@ -59,6 +55,11 @@ class BasicManager:
 
         # queue of interactions to handle
         self.actionQueue = Queue()
+
+        # the streamer instance which will stream all of the vids
+        self.streamer = VideoStreamer(
+            host=host, port=port, get_next=self.get_next, get_playlist=self.get_playlist
+        )
 
     """
     QUEUE MANAGEMENT
@@ -84,8 +85,8 @@ class BasicManager:
             session = self.session
 
         # get the next 10
-        
-        return self.db.get_range(amount=10, session=session)
+
+        return [q.history.video for q in self.db.get_range(amount=10, session=session)]
 
     def get_next(self, session=None, peek=False):
         """
@@ -166,7 +167,7 @@ class BasicManager:
             result = "<b>The queue is empty.</b>\nUse /add to add things to the queue"
         else:
             result = (
-                f"<b>Queue ({self.db.length(session)} songs:"
+                f"<b>Queue ({self.db.length(session)} songs: "
                 f"{datetime.timedelta(seconds=self.queue_get_length(session=session))}):</b>\n"
             )
 

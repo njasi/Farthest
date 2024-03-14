@@ -63,11 +63,9 @@ class ChannelAction:
             self.text = text
 
         if not hasattr(self, "loop"):
-            print("loops1")
             return
 
         if self.loop is None:
-            print("loops")
             return
 
         if hasattr(self, "menu_id"):

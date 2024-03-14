@@ -14,6 +14,8 @@ from .handlers.add import add
 from .handlers.queue import queue
 from .handlers.pause import pause
 from .handlers.play import play
+from .handlers.skip import skip
+from .handlers.remove import remove
 
 
 # load in the needed constants
@@ -45,6 +47,8 @@ def launch() -> None:
     application.add_handler(CommandHandler(["add", "a"], add))
     application.add_handler(CommandHandler(["pause"], pause))
     application.add_handler(CommandHandler(["play"], play))
+    application.add_handler(CommandHandler(["skip"], skip))
+    application.add_handler(CommandHandler(["remove"], remove))
     # the error handler
     application.add_error_handler(error_handler)
 

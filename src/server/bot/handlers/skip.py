@@ -19,6 +19,7 @@ parser.add_argument(
     type=str,
     help="The flag of what channel you want to skip in.",
 )
+parser.add_argument("--count", default=1, type=int, help="How many items to skip")
 
 
 async def skip(update: Update, context: FartherContext):
@@ -31,9 +32,5 @@ async def skip(update: Update, context: FartherContext):
     channel = context.channels[options.channel]
 
     channel.send_action(
-        Skip(
-            update,
-            context,
-            loop=asyncio.get_event_loop(),
-        )
+        Skip(update, context, loop=asyncio.get_event_loop(), amount=options.count)
     )

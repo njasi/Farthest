@@ -13,6 +13,7 @@ def list_skipped(skipped, bullet="-"):
     turn a list of skipped videos into a presentable html formmatted
     string
     """
+    res = []
     for s in skipped:
         res += [s.telegram_str(bullet=bullet, length=False)]
 
@@ -30,17 +31,13 @@ class Skip(ChannelAction):
 
         # TODO go through and standardize this kinda
         """
-        self.update = update
-        self.context = context
-        self.loop = loop
+        super().__init__(update, context, loop)
         self.amount = amount
 
         self.error_text = "There was an error skipping this 'song'."
 
-        super(self)
-
     def run(self, chan: ChannelManager):
-        skipped = chan.skip(self.amount)
+        skipped = chan.skip(self.session, amount=self.amount)
 
         if len(skipped) == 0:
             self.text = (

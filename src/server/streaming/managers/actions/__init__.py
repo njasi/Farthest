@@ -10,3 +10,4 @@ from .Add import Add
 from .Play import Play
 from .Pause import Pause
 from .Skip import Skip
+from .Remove import Remove

@@ -18,9 +18,9 @@ class VideoStreamer:
     def __init__(self, host="localhost", port=8080, get_next=None, get_playlist=None):
         self.port = port
         # TODO inspect the quality of the stream with these options
-        # self.options = f":sout=#transcode{{vcodec=h264,acodec=mp3,ab=128,channels=2,samplerate=44100}}:std{{access=http,mux=ts,dst=:{port}}}"
-        # self.options = f":sout=#transcode{{vcodec=h264,acodec=mp3,ab=128,channels=2,samplerate=44100}}:std{{access=http,mux=ts,dst=:{port}}}"
-        # self.options = f":sout=#transcode{{vcodec=h264,ab=128,channels=2,samplerate=44100}}:rtp{{dst=:{port}}}"
+        # f":sout=#transcode{{vcodec=h264,acodec=mp3,ab=128,channels=2,samplerate=44100}}:std{{access=http,mux=ts,dst=:{port}}}"
+        # f":sout=#transcode{{vcodec=h264,acodec=mp3,ab=128,channels=2,samplerate=44100}}:std{{access=http,mux=ts,dst=:{port}}}"
+        # f":sout=#transcode{{vcodec=h264,ab=128,channels=2,samplerate=44100}}:rtp{{dst=:{port}}}"
         self.options = (
             # f":sout=#transcode{{vcodec=h264,ab=128,channels=2,samplerate=44100}}"
             f":sout=#transcode{{vcodec=h264,acodec=mpga,vb=2000,ab=128,venc=x264{{preset=ultrafast,tune=zerolatency}}}}"
@@ -45,10 +45,13 @@ class VideoStreamer:
 
         # vlc instance setup
         self.vlc = vlc.Instance("--no-xlib")
-        self.player = None
+
+        # oad in playlist before oading player
         self.playlist = self.vlc.media_list_new()
-        self.load_player()
         self.update_playlist()
+
+        self.player = None
+        self.load_player()
 
     def update_playlist(self, skip_current=False):
         """
@@ -62,41 +65,36 @@ class VideoStreamer:
 
         pl = self.get_playlist()
         pc = self.playlist.count()
+
+        # we dont want anything else touching the list in the middle of this
+        self.playlist.lock()
+
         for i, item in enumerate(pl):
-            if i > pc:
+            if i >= pc:
                 # if we're past the playlist we want to be adding now
-                self.playlist.lock()
                 self.playlist.insert_media(self._new_media(item), i)
-                self.playlist.unlock()
                 continue
 
-            self.playlist.lock()
             curr = self.playlist.item_at_index(i)
-            self.playlist.unlock()
 
             if not curr.get_mrl() == self._get_mrl(item):
                 # mrl is different, we should replace it
                 # even if the same video, the mrl has updated so
                 # we shoud change it out
-                self.playlist.lock()
                 self.playlist.remove_index(i)
-                self.playlist.insert_media(self._new_media(item))
-                self.playlist.unlock()
+                self.playlist.insert_media(self._new_media(item), i)
 
         # remove any extras
         if len(pl) < pc:
-            self.playlist.lock()
             for i in range(len(pl), pc):
                 self.playlist.remove_index(i)
-            self.playlist.unlock()
 
         # add the default screen at the very end
         # TODO case where its just the default screen, dont remove and regenerate it
-        self.playlist.add(self.default_screen)
+        self.playlist.add_media(self.default_screen)
+        self.playlist.unlock()
 
-        self.playlist = self.vlc.media_list_new()
-
-    def _get_mrl(video):
+    def _get_mrl(self, video):
         """
         Get the preferred resource from the video
         """
@@ -111,18 +109,11 @@ class VideoStreamer:
         video:  any, the related db video entry
         """
 
-        media = self.vlc.Media(self._get_mrl(video))
-        # use custom metadata to save video id
-        media.set_meta("vid", video.id)
-        media.save_meta()
+        media = self.vlc.media_new(self._get_mrl(video))
+        media.add_option(self.options)
+        return media
 
     def load_player(self):
-        # if self.player is not None:
-        #     # kill old player
-        #     self.player.stop()
-        #     self.player.release()
-        # self.player = self.vlc.media_player_new()
-        # self.attach_events()
         self.player = self.vlc.media_list_player_new()
         # TODO check if this needs to be updated
         self.player.set_media_list(self.playlist)
@@ -136,14 +127,15 @@ class VideoStreamer:
             last time the callbacks would die after one go
         """
         self.player.event_manager().event_attach(
-            vlc.EventType.MediaPlayerEncounteredError, lambda e: print("error", e)
+            vlc.EventType.MediaPlayerEncounteredError,
+            lambda e: print("streamer error", e),
         )
-        self.player.event_manager().event_attach(
-            vlc.EventType.MediaPlayerEndReached, self.stream
-        )
-        self.player.event_manager().event_attach(
-            vlc.EventType.MediaPlayerEncounteredError, self.stream
-        )
+        # self.player.event_manager().event_attach(
+        #     vlc.EventType.MediaPlayerEndReached, self.stream
+        # )
+        # self.player.event_manager().event_attach(
+        #     vlc.EventType.MediaPlayerEncounteredError, self.stream
+        # )
 
     def stream(self, event=None) -> None:
         """
@@ -152,43 +144,11 @@ class VideoStreamer:
         if the queue is empty (ie get_next returns None)
         then we start looping the default screen.
         """
-        # select the next video and play (becomes current)
-        # telegram messages are handled in the Channel class
-        # when the get_next cb is called
         try:
-            logger.info("Getting next video from my ChannelManager")
-            current_video = self.get_next()
-            ext_options = ""
+            logger.info("Updating the playlist")
 
-            # If no next video display the default image instead
-            resource = self.default_screen
-            if current_video is None:
-                # if already empty we shouldn't restart the empty video
-                if self.empty:
-                    return
-                logger.info("launching placeholder video")
-                self.empty = True
-                ext_options = ":input-repeat=65535"
-            else:
-                self.empty = False
-                # Load the video file, prefer path over url
-                resource = (
-                    current_video.downloaded_path
-                    if current_video.downloaded
-                    else current_video.resource_url
-                )
-
-            media = self.vlc.media_new(resource)
-
-            # put in our default options, ie
-            # set up VLC to generate an HLS stream
-            media.add_option(self.options)
-            # will contain extra opts, ie it's the default screen, loop it
-            media.add_option(ext_options)
-
-            # add the media into the player & start playing it
-            self.load_player()
-            self.player.set_media(media)
+            # update the playlist & start playing it
+            self.update_playlist()
             self.player.play()
 
         except Exception as e:
@@ -202,7 +162,7 @@ class VideoStreamer:
         if self.empty:
             return 0
 
-        return int(self.player.get_time() / 1000)
+        return int(self.player.get_media_player().get_time() / 1000)
 
     def get_remaining(self) -> int:
         """
@@ -212,10 +172,11 @@ class VideoStreamer:
         if self.empty:
             return 0
 
-        return self.player.get_length()
+        return int(self.player.get_media_player().get_length() / 1000)
 
     def kill(self):
         """Kill the stream & release the vlc resources"""
+        self.playlist.release()
         self.player.release()
         self.vlc.release()
 
@@ -227,10 +188,16 @@ class VideoStreamer:
         TODO: check if stopping the vid from the outside triggers the callback
         """
 
-        self.player.stop()
-        self.player.remove()
+        # self.player.stop()
 
-        self.stream()
+        # grab the next from the playlist & then update the playlist
+        # since updating the playlist grabs from the db, this should
+        # have the element removed
+        self.player.next()
+        self.update_playlist()
+
+        # TODO do we need this still
+        # self.stream()
 
     def pause(self):
         """

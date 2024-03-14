@@ -8,39 +8,33 @@ logger = logging.getLogger(__name__)
 
 from .Skip import list_skipped
 
-class Skip(ChannelAction):
+
+class Remove(ChannelAction):
     """
     Action for skipping currently playing
     """
 
-    def __init__(self, update, context, loop, amount: int) -> None:
+    def __init__(self, update, context, loop, idx: int) -> None:
         """
         amount:     int, the amount of items to skip
 
         # TODO go through and standardize this kinda
         """
-        self.update = update
-        self.context = context
-        self.loop = loop
-        self.amount = amount
+        super().__init__(update, context, loop)
+        self.idx = idx
 
-        self.error_text = "There was an error skipping this 'song'."
+        self.error_text = "There was an error removing this 'song'."
 
-        super(self)
 
     def run(self, chan: ChannelManager):
-        removed = chan.remove(self.amount)
+        removed = chan.remove(self.idx)
 
-        if len(skipped) == 0:
+        if len(removed) == 0:
             self.text = (
-                f"<b>The queue is empty, there is no song to skip.</b>\n\n"
-                "Add 'songs' to the queue with /add"
+                f"<b>There is no 'song' at position {self.idx} of the queue.</b>\n\n"
+                "Use the /queue command to see the positions. Note that it is 0-indexed."
             )
-        elif len(skipped) == 1:
-            self.text = f"<b>Skipped 'Song'</b>:\n\n{list_skipped(skipped,bullet='')}"
         else:
-            self.text = (
-                f"<b>Skipped {len(skipped)} 'Songs'</b>:\n\n{list_skipped(skipped)}"
-            )
+            self.text = f"<b>Removed 'Song'</b>:\n\n{list_skipped(removed,bullet='')}"
 
         self.send()

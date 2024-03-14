@@ -7,4 +7,3 @@
 # from database import metadata
 
 # db = SQLAlchemy(metadata=metadata)
-# print("connected to flask sql alchem")

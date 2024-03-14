@@ -21,9 +21,8 @@ class Pause(ChannelAction):
         paused_playback = chan.pause()
         curr = chan.get_current(session=self.session)
 
-        message = ""
         if curr is None:
-            message = (
+            self.text = (
                 "The queue is empty, add items to the queue with /add."
             )
         else:
@@ -33,12 +32,12 @@ class Pause(ChannelAction):
                 f"{datetime.timedelta(seconds=curr.history.video.length)})"
             )
             if paused_playback:
-                message = (
+                self.text = (
                     f"<b>Paused 'Song':</b>\n{details})"
                     "\n\nTo resume playback use /play"
                 )
             else:
-                message = (
+                self.text = (
                     f"<b>Already Paused</b>\n<a href='{details})"
                     "\n\nIf there is no audio maybe the client needs to be refreshed."
                 )
