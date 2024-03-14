@@ -1,19 +1,20 @@
 import threading
-import time
 import datetime
+import logging
 
 from queue import Queue
-from telegram import Update
-from telegram.ext import ContextTypes
-from telegram.error import BadRequest
 
 from database import QueueInterface, Session, History
 from ..VideoStreamer import VideoStreamer
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 # from database import QueueInterface, History, Video
 
 # at what point does downloading happen?
-# that shoul;d probably be managed by the channel?
+# that should probably be managed by the channel?
 #  - make a thread for the channel devoted to downloading
 #  - make a thread for all channels for downloading
 
@@ -32,6 +33,7 @@ class BasicManager:
         self,
         channel_id,
         title,
+        flag,
         host,
         port,
     ):
@@ -39,6 +41,7 @@ class BasicManager:
         self.streamer = VideoStreamer(host=host, port=port, get_next=self.get_next)
 
         self.title = title
+        self.flag = flag
         self.channel_id = channel_id
 
         # the thread that the video streamer will be running in
@@ -63,25 +66,42 @@ class BasicManager:
         """
         Get the currently playing video from the queue
         """
-        # TODO map queue obj to video instance
 
         if session is None:
+            self.session.close()
+            self.session = Session()
             session = self.session
 
-        return self.db.peek(session)
+        return self.db.peek(session=session)
 
     def get_next(self, session=None):
         """
         get the next element out of the queue,
         while also removing the front
         """
+
         if session is None:
+            self.session.close()
+            self.session = Session()
             session = self.session
 
-        # this dequeue returns the new head, so it also does the next element
-        next = self.db.dequeue(session)
+        logger.info(f"[Channel {self.channel_id}]: Getting Next Song")
 
-        return next
+        next = None
+        if self.streamer.empty:
+            print("Peeking")
+            next = self.db.peek(session)
+        else:
+            print(f"Dequeueing [{self.channel_id}]")
+
+            # this dequeue returns the new head, so it also does the next element
+            next = self.db.dequeue(session)
+
+        logger.info(f"[Channel {self.channel_id}]: Got Next Song: {next}")
+
+        if next is None:
+            return None
+        return next.history.video
 
     """
     BOT HELPERS
@@ -94,6 +114,8 @@ class BasicManager:
         """
 
         if session is None:
+            self.session.close()
+            self.session = Session()
             session = self.session
 
         remaining_time = self.db.total_time(session)
@@ -104,15 +126,26 @@ class BasicManager:
 
         return remaining_time
 
-    def queue_to_telegram(self, start_idx=0, page_size=10, session=None):
+    def queue_to_telegram(
+        self, start=0, page=None, page_size=20, all=False, session=None, **kwargs
+    ):
         """
         Display the current playlist queue as an html formatted string,
         meant to be displayed in telegram
-            - shows page_size videos at a time starting at start_idx
+            - shows page_size videos at a time starting at start
         """
 
         if session is None:
+            self.session.close()
+            self.session = Session()
             session = self.session
+
+        if page is not None:
+            start = page * page_size
+
+        if all:
+            start = 0
+            page_size = self.db.length(session)
 
         result = ""
 
@@ -120,12 +153,12 @@ class BasicManager:
             result = "<b>The queue is empty.</b>\nUse /add to add things to the queue"
         else:
             result = (
-                f"<b>Queue ({self.db.length(session)} songs: "
-                f"{datetime.timedelta(seconds=self.queue_get_length(session=session))}):</b>"
+                f"<b>Queue ({self.db.length(session)} songs:"
+                f"{datetime.timedelta(seconds=self.queue_get_length(session=session))}):</b>\n"
             )
 
             for i, video in enumerate(
-                self.db.get_range(start_idx, page_size, session=session)
+                self.db.get_range(start, page_size, session=session)
             ):
                 result += f"\n{video.telegram_str()}"
         return result
@@ -141,7 +174,7 @@ class BasicManager:
         self.thread = threading.Thread(target=self.process_actions)
         self.thread.start()
         # TODO switch to a logger
-        print(f"\t[Channel {self.channel_id}]: Started Worker thread")
+        logging.info(f"[Channel {self.channel_id}]: Started Worker thread")
 
     def stop_channel(self):
         """
@@ -159,6 +192,8 @@ class BasicManager:
         Start the video stream and then process incoming actions
         """
 
+        self.streamer.stream()
+
         while True:
             # wait until there is an action
             action = self.actionQueue.get()
@@ -167,7 +202,7 @@ class BasicManager:
             try:
                 action.run(self)
             except Exception as e:
-                print("process_action error", e)
+                logger.error("process_action error", e)
             finally:
                 action.cleanup()
 
@@ -188,6 +223,7 @@ class BasicManager:
             - if streamer is empty tell it to start streaming
               if theres no new videos this wont do anything,
               but it should prevent deadlock
+
         """
         if self.streamer.empty:
             # if the streamer was empty we need to jumpstart it
@@ -195,12 +231,18 @@ class BasicManager:
             self.streamer.stream()
 
         self.streamer.play()
+        # TODO return false if already playing & true otherwise
+        return True
 
     def pause(self):
         """
         Tell the streamer to pause
+
+        - returns false if already paused or empty & true otherwise
         """
-        self.streamer.pause()
+        paused_playback = self.streamer.pause()
+
+        return paused_playback
 
     def skip(self, session, amount=1):
         """
@@ -244,8 +286,8 @@ class BasicManager:
         # if its not currently playing anything, we will want to trigger it
         # then it will request the content with get_next
         # TODO play with the streamer
-        # if self.streamer.empty:
-        #     self.streamer.stream()
+        if self.streamer.empty:
+            self.streamer.stream()
 
         return history
 

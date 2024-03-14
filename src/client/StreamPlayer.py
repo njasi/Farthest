@@ -9,12 +9,11 @@ class StreamPlayer:
 
     def __init__(self, stream_url: str):
         # make the vlc instance and player
-        self.instance = vlc.Instance("--quiet")
-        self.player = self.instance.media_player_new("--I macosx")
+        self.instance = vlc.Instance("--quiet --network-caching=100")
+        self.player = self.instance.media_player_new()
 
         # connect to stream
         self.connect(stream_url)
-
 
         self._window_macosx()
 
@@ -35,10 +34,9 @@ class StreamPlayer:
         # avGeom = QtGui.QDesktopWidget().availableGeometry()
         # avGeom.setTop(24)
 
-
         vlcApp = QtWidgets.QApplication([])
         vlcWidget = QtWidgets.QFrame()
-        vlcWidget.resize(1080,720)
+        vlcWidget.resize(1080, 720)
         vlcWidget.show()
 
         vlcWidget.setWindowTitle("Farther Python Client")
@@ -93,4 +91,6 @@ class StreamPlayer:
 
 
 if __name__ == "__main__":
-    player = StreamPlayer("http://192.168.0.11:1234")
+    player = StreamPlayer("http://192.168.0.11:61234")
+    # player = StreamPlayer("rtp://192.168.0.11:61234")
+    time.sleep(100000)

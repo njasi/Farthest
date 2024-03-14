@@ -49,7 +49,7 @@ class Queue(Base):
         )
 
         return (
-            f"[{self.position + 1}]"
+            f"[{self.position}]"
             f"\t<a href='{self.history.video.url}'>{title}</a>"
             f"\t({datetime.timedelta(seconds=self.history.video.length)})"
         )
@@ -96,7 +96,7 @@ class QueueInterface:
         """
         Return true if db is empty, false otherwise
         """
-        return self.length(session) == 0
+        return self.length(session=session) == 0
 
     def enqueue(self, history_id: int, video=None, session=None):
         """
@@ -150,13 +150,13 @@ class QueueInterface:
             )
             session.commit()
 
-        return self.peek()
+        return front_item
 
     def get(self, index: int, session=None):
         """
         Get the video at the index
         """
-        if self.is_empty():
+        if self.is_empty(session=session):
             return None
 
         if session is None:
@@ -174,10 +174,10 @@ class QueueInterface:
         """
         Check the first item in the queue, (should be current)
         """
-        if self.is_empty():
+        if self.is_empty(session=session):
             return None
 
-        return self.get(0, session)
+        return self.get(0, session=session)
 
     """
     functions below are more related to bot management than queue functionality

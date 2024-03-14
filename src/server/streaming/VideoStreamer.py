@@ -1,4 +1,8 @@
 import vlc
+import logging
+import os
+
+logger = logging.getLogger(__name__)
 
 
 class VideoStreamer:
@@ -10,14 +14,29 @@ class VideoStreamer:
     ):
         self.port = port
         # TODO inspect the quality of the stream with these options
-        self.options = f":sout=#transcode{{vcodec=h264,acodec=mp3,ab=128,channels=2,samplerate=44100}}:std{{access=http,mux=ts,dst=:{port}}}"
+        # self.options = f":sout=#transcode{{vcodec=h264,acodec=mp3,ab=128,channels=2,samplerate=44100}}:std{{access=http,mux=ts,dst=:{port}}}"
+        # self.options = f":sout=#transcode{{vcodec=h264,acodec=mp3,ab=128,channels=2,samplerate=44100}}:std{{access=http,mux=ts,dst=:{port}}}"
+        # self.options = f":sout=#transcode{{vcodec=h264,ab=128,channels=2,samplerate=44100}}:rtp{{dst=:{port}}}"
+        self.options = (
+            # f":sout=#transcode{{vcodec=h264,ab=128,channels=2,samplerate=44100}}"
+            f":sout=#transcode{{vcodec=h264,acodec=mpga,vb=2000,ab=128,venc=x264{{preset=ultrafast,tune=zerolatency}}}}"
+            # f":rtp{{access=udp,mux=ts,dst={host},port={port},sdp=sap,sap,name='Farther Stream'}}"
+            # f":rtp{{access=udp,mux=ts,dst={host},port={port}}}"
+            # f":rtp{{mux=ts,dst={host},sdp=sap,name='TestStream'}}"
+            f":std{{access=http,mux=ts,dst=:{port}}}"
+        )
+
+        logger.info(f"Streamer options: {self.options}")
+
+        # suppress vlc logging https://github.com/oaubert/python-vlc/issues/119
+        # os.environ["VLC_VERBOSE"] = str("-1")
 
         self.vlc = vlc.Instance("--no-xlib")
         self.player = self.vlc.media_player_new()
-        self.default_screen = "default.png"
+        self.default_screen = "./downloaded/empty.mp4"
 
-        self.empty = True
-
+        # these manage the currently playing video, get_next is passed from the related channelmanager
+        self.empty = False
         self.get_next = get_next
 
         # on video end or error, play the next one
@@ -41,20 +60,25 @@ class VideoStreamer:
         # select the next video and play (becomes current)
         # telegram messages are handled in the Channel class
         # when the get_next cb is called
+        logger.info("Getting next video from my ChannelManager")
         current_video = self.get_next()
         ext_options = ""
 
         # If no next video display the default image instead
         resource = self.default_screen
         if current_video is None:
+            # if already empty we shouldn't restart the empty video
+            if self.empty:
+                return
+            logger.info("launching placeholder video")
             self.empty = True
             ext_options = ":input-repeat=65535"
         else:
             self.empty = False
             # Load the video file, prefer path over url
             resource = (
-                current_video.resource_path
-                if current_video.resource_path
+                current_video.downloaded_path
+                if current_video.downloaded
                 else current_video.resource_url
             )
 
@@ -73,10 +97,10 @@ class VideoStreamer:
     def get_progress(self) -> int:
         """
         Get the number of seconds into the current video
-        return None if empty, maybe raise an error instead?
+        return 0 if empty, maybe raise an error instead?
         """
         if self.empty:
-            return None
+            return 0
 
         return int(self.player.get_time() / 1000)
 
@@ -86,9 +110,9 @@ class VideoStreamer:
         return None if empty, maybe raise an error instead?
         """
         if self.empty:
-            return None
+            return 0
 
-        self.player.get_length()
+        return self.player.get_length()
 
     def kill(self):
         """Kill the stream & release the vlc resources"""
@@ -113,14 +137,20 @@ class VideoStreamer:
         Pause the currently playing item
           - Don't allow when playing the default screen.
         """
+        if self.empty or not self.player.is_playing():
+            return False
         self.player.pause()
+        return True
 
     def play(self):
         """
         Play the currently playing item
           - Don't allow when playing the default screen.
         """
+        if self.empty or self.player.is_playing():
+            return False
         self.player.play()
+        return True
 
     def set_time(self, time):
         """

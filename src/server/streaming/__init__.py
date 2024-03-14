@@ -1,23 +1,29 @@
 from .managers import ChannelManager
 from database import Session, Channels
+import logging
 
-CHANNEL_FARTHER_ID = 0
+logger = logging.getLogger(__name__)
+
+# static farther flag
+CHANNEL_FARTHER_FLAG = "farther"
+
 CHANNELS = {}
 
 
 def init():
+    global CHANNELS
     """
     Intialize all of the backend streaming stuff,
-     - channel class instances etc
+     - load the channel db into their managers
     """
-    load_channels()
+    CHANNELS = load_channels()
+
 
 def load_channels():
     """
     load the channels from the database
     """
-    global CHANNELS
-    print("Loading Channels...")
+    logger.info("Loading Channels...")
 
     channels = []
 
@@ -26,13 +32,14 @@ def load_channels():
 
     channel_map = {}
     for channel in channels:
-        channel_map[channel.id] = ChannelManager(
+        channel_map[channel.flag] = ChannelManager(
             channel_id=channel.id,
             host=channel.hostname,
             title=channel.title,
+            flag=channel.flag,
             port=channel.port,
         )
         # start worker threads
-        channel_map[channel.id].start_channel()
+        channel_map[channel.flag].start_channel()
 
-    CHANNELS = channel_map
+    return channel_map

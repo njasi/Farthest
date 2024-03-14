@@ -3,7 +3,7 @@
 from telegram.ext import Application, ContextTypes
 from telegram import Update
 
-from streaming import CHANNELS, CHANNEL_FARTHER_ID
+from streaming import CHANNELS, CHANNEL_FARTHER_FLAG
 from database import Users, Session
 
 
@@ -21,7 +21,7 @@ class FartherContext(ContextTypes.DEFAULT_TYPE):
         super().__init__(application=application, chat_id=chat_id, user_id=user_id)
 
         # attach the farther channel & all other channels
-        self.farther_channel = CHANNELS[CHANNEL_FARTHER_ID]
+        self.farther_channel = CHANNELS[CHANNEL_FARTHER_FLAG]
         self.channels = CHANNELS
 
 

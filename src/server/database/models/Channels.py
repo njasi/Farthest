@@ -11,6 +11,7 @@ class Channels(Base):
 
     id:             int, unique id for the channel item
     title:          string, the title of the channel
+    flag:           string, short name to interact with the channel in commands
     description:    string, a short description of the channel
     hostname:       string, the hostname of the server its being streamed on
     port:           int, the port this is being streamed on
@@ -21,10 +22,11 @@ class Channels(Base):
 
     id = Column(Integer, primary_key=True)
     title = Column(String)
+    flag = Column(String)
     descrption = Column(String)
 
     # channelmanager type
-    manager_type = Column(String)
+    manager_type = Column(String, default="basic")
 
     # streaming location settings
     hostname = Column(String)

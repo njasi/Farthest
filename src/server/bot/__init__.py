@@ -8,10 +8,12 @@ from telegram.constants import ParseMode
 from telegram.ext import Application, CommandHandler, ContextTypes, Defaults
 
 from .FartherContext import FartherContext
+from .handlers.error import error_handler
 from .handlers.start import start
 from .handlers.add import add
 from .handlers.queue import queue
-from .handlers.error import error_handler
+from .handlers.pause import pause
+from .handlers.play import play
 
 
 # load in the needed constants
@@ -41,6 +43,8 @@ def launch() -> None:
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler(["queue", "q"], queue))
     application.add_handler(CommandHandler(["add", "a"], add))
+    application.add_handler(CommandHandler(["pause"], pause))
+    application.add_handler(CommandHandler(["play"], play))
     # the error handler
     application.add_error_handler(error_handler)
 

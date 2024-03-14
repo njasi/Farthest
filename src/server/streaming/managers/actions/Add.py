@@ -1,6 +1,8 @@
 import asyncio
 import datetime
 from telegram import LinkPreviewOptions
+import logging
+logger = logging.getLogger(__name__)
 
 from error import send_error
 from database import Video, Users
@@ -22,10 +24,13 @@ class Add(ChannelAction):
     """
 
     def run(self, chan: ChannelManager):
+
         # add the video instance to this session
         # could add by id with no issues if there r problems
         video = Video.find_by_id(self.video_id, session=self.session)
         user = Users.find_or_create(self.update.effective_user.id, session=self.session)
+
+        logger.info(f"[Channel {chan.channel_id}]: user({user.id}) added video({video.id})")
 
         # ask for the time before the new one is added
         time_until = chan.queue_get_length()

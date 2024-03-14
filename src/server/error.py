@@ -1,5 +1,6 @@
 import traceback
-
+import logging
+logger = logging.getLogger(__name__)
 
 def send_error(error: Exception):
     """
@@ -24,7 +25,7 @@ def send_error(error: Exception):
         # just incase there is in issue with imports (mainly setup for during develop)
         # silent fails are annoying...
 
-        print("=" * 30, "\nAn Exception Occured During send_error")
+        logger.error("=" * 30, "\nAn Exception Occured During send_error")
         traceback.print_exc()
-        print("=" * 30, "\n While attempting to report the following Exception:")
+        logger.error("=" * 30, "\n While attempting to report the following Exception:")
         traceback.print_exception(error)

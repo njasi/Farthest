@@ -17,10 +17,6 @@ from bot.FartherContext import FartherContext
 TELEGRAM_MESSAGE_CHAR_LIMIT = 4096
 DEVELOPER_CHAT_ID = os.environ["FARTHER_ADMIN_CHAT_ID"]
 
-# Enable logging
-logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
-)
 # set higher logging level for httpx to avoid all GET and POST requests being logged
 logging.getLogger("httpx").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
@@ -65,7 +61,7 @@ def send_error(
     # list of strings rather than a single string, so we have to join them together.
     tb_list = traceback.format_exception(None, error, error.__traceback__)
     tb_string = "".join(tb_list)
-    print(tb_string)
+    logger.error(tb_string)
 
     message = "An exception was raised"
     if update is not None:
@@ -90,7 +86,7 @@ def send_error(
     message += f"<pre>{html.escape(tb_string)}</pre>"
 
     if bot is None:
-        print("No bot found...")
+        logger.error("No bot found...")
         return
 
     if loop is None:

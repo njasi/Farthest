@@ -1,3 +1,4 @@
+import logging
 import argparse
 import random
 import time
@@ -13,6 +14,8 @@ from downloaders.exceptions import NoDownloaderFound, FetchError
 
 from streaming.managers import Add
 from database import Video
+
+logger = logging.getLogger(__name__)
 
 # make arg parser
 parser = ArgumentParser(description="Add items to the queue")
@@ -198,7 +201,6 @@ async def add_video(
             chat_id=message.chat_id,
         )
 
-    print(f"Sending Video(id={video.id})")
     channel.send_action(
         Add(
             update,
@@ -233,7 +235,6 @@ async def add_playlist(playlist: Result, update, context, message, channel):
     time = 0
     for video in playlist.videos:
         time += video.length
-        print("Added from playlist: ", video.title)
         await add_video(video, update, context, message, channel, update_message=False)
 
     # TODO, add starts in n mins message
