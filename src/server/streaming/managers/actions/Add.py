@@ -2,6 +2,7 @@ import asyncio
 import datetime
 from telegram import LinkPreviewOptions
 import logging
+
 logger = logging.getLogger(__name__)
 
 from error import send_error
@@ -24,62 +25,44 @@ class Add(ChannelAction):
     """
 
     def run(self, chan: ChannelManager):
-
-        # add the video instance to this session
-        # could add by id with no issues if there r problems
         video = Video.find_by_id(self.video_id, session=self.session)
         user = Users.find_or_create(self.update.effective_user.id, session=self.session)
 
-        logger.info(f"[Channel {chan.channel_id}]: user({user.id}) added video({video.id})")
+        logger.info(
+            f"[Channel {chan.channel_id}]: user({user.id}) added video({video.id})"
+        )
 
         # ask for the time before the new one is added
         time_until = chan.queue_get_length()
-        queue = None
 
         try:
-            queue = chan.add(video, user, self.session)
+            chan.add(video, user, self.session)
 
             # if the adding should not be announced, just return.
             # NOTE: (this happens when a playlist is added)
-            # and maybe when added from webclient
             if not self.announce:
                 return
 
         except Exception as e:
-            send_error(e)
-
-            self.loop.call_soon_threadsafe(
-                asyncio.ensure_future,
-                self.context.bot.edit_message_text(
-                    text="There was an error adding this 'song' to the queue.",
-                    chat_id=self.update.effective_chat.id,
-                    message_id=self.message_id,
-                    parse_mode="HTML",
-                ),
-            )
+            self.send_error(e, "There was an error adding this 'song' to the queue.")
             return
 
-        message = (
+        self.text = (
             f"<b>Added 'song'</b> (plays in {datetime.timedelta(seconds=time_until)})\n"
             f"<a href='{video.url}'>{video.title}</a>\n\n"
         )
         if video.stats.play_count == 0:
-            message += "Congratulations you're the first person to queue this 'song'!"
+            self.text += "Congratulations you're the first person to queue this 'song'!"
         else:
-            message += f"Play Count: {video.stats.play_count}"
+            self.text += f"Play Count: {video.stats.play_count}"
 
         # TODO: if the song was just added to empty maybe dont send,
         #       cause playing will get sent
-        self.loop.call_soon_threadsafe(
-            asyncio.ensure_future,
-            self.context.bot.edit_message_text(
-                text=message,
-                chat_id=self.update.effective_chat.id,
-                message_id=self.message_id,
-                parse_mode="HTML",
-                link_preview_options=LinkPreviewOptions(
-                    url=video.url,
-                    prefer_small_media=True,
-                ),
+
+        self.send_args = {
+            "link_preview_options": LinkPreviewOptions(
+                url=video.url,
+                prefer_small_media=True,
             ),
-        )
+        }
+        self.send()

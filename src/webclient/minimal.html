@@ -2,11 +2,30 @@
 <html>
   <head>
     <title>Farther Mini™</title>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <!-- minimal hls implementation -->
+    <script defer>
+      var video = document.getElementById("videoPlayer");
+      const URL = "http://192.168.0.11:61234";
+      if (Hls.isSupported()) {
+        var hls = new Hls();
+        hls.loadSource(URL);
+        hls.attachMedia(video);
+        hls.on(Hls.Events.MANIFEST_PARSED, function () {
+          video.play();
+        });
+      } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
+        video.src = URL;
+        video.addEventListener("loadedmetadata", function () {
+          video.play();
+        });
+      }
+    </script>
     <style></style>
   </head>
   <body>
     <h1>Farther Mini Client</h1>
     <p>Minimal webclient for farther</p>
-    <video></video>
+    <video id="videoPlayer" controls autoplay></video>
   </body>
 </html>

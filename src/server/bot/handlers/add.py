@@ -206,7 +206,7 @@ async def add_video(
             update,
             context,
             loop=asyncio.get_event_loop(),
-            message_id=message.id,
+            menu_id=message.id,
             video_id=video.id,
             announce=update_message,
         )

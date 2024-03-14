@@ -1,7 +1,9 @@
+import asyncio
 from time import time
 from telegram import Update
 from telegram.ext import ContextTypes
 
+from error import send_error
 from database import Session
 from ..BasicManager import BasicManager as ChannelManager
 
@@ -19,11 +21,20 @@ class ChannelAction:
     and the worker thread processes them one by one
     """
 
-    def __init__(self, update: Update, context: ContextTypes.DEFAULT_TYPE, **kwargs):
+    def __init__(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE, loop, menu_id = None, **kwargs
+    ):
         # for communicating with telegram if needed
         # most actions will be triggered by an update after all
         self.update = update
         self.context = context
+        self.loop = loop
+
+        # message text to send or edit at the end of the action
+        self.text = ""
+        # default error text to use
+        self.error_text = "There was an error processing this action."
+        self.send_args = {}
 
         # session obj for this action
         self.session = Session()
@@ -36,6 +47,50 @@ class ChannelAction:
         """
         implement for each action seperately
         """
+
+    def send_error(self, error, text=None):
+        """
+        Wrapper around send_error from .error & ChannelAction.send that
+        makes it simple to report an error & update the user on it
+        """
+        if text is None:
+            text = self.error_text
+        send_error(error)
+        self.send(text)
+
+    def send(self, text=None):
+        if text is not None:
+            self.text = text
+
+        if not hasattr(self, "loop"):
+            print("loops1")
+            return
+
+        if self.loop is None:
+            print("loops")
+            return
+
+        if hasattr(self, "menu_id"):
+            self.loop.call_soon_threadsafe(
+                asyncio.ensure_future,
+                self.context.bot.edit_message_text(
+                    text=self.text,
+                    message_id=self.menu_id,
+                    chat_id=self.update.effective_chat.id,
+                    **self.send_args
+                ),
+            )
+            return
+
+        self.loop.call_soon_threadsafe(
+            asyncio.ensure_future,
+            self.context.bot.send_message(
+                text=self.text,
+                chat_id=self.update.effective_chat.id,
+                reply_to_message_id=self.update.effective_message.id,
+                **self.send_args
+            ),
+        )
 
     def cleanup(self):
         self.session.close()

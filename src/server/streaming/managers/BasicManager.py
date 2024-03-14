@@ -38,7 +38,9 @@ class BasicManager:
         port,
     ):
         # the streamer instance which will stream all of the vids
-        self.streamer = VideoStreamer(host=host, port=port, get_next=self.get_next)
+        self.streamer = VideoStreamer(
+            host=host, port=port, get_next=self.get_next, get_playlist=self.get_playlist
+        )
 
         self.title = title
         self.flag = flag
@@ -68,13 +70,24 @@ class BasicManager:
         """
 
         if session is None:
+            # TODO think of a better format for this
             self.session.close()
             self.session = Session()
             session = self.session
 
         return self.db.peek(session=session)
 
-    def get_next(self, session=None):
+    def get_playlist(self, session=None):
+        if session is None:
+            self.session.close()
+            self.session = Session()
+            session = self.session
+
+        # get the next 10
+        
+        return self.db.get_range(amount=10, session=session)
+
+    def get_next(self, session=None, peek=False):
         """
         get the next element out of the queue,
         while also removing the front
@@ -88,7 +101,7 @@ class BasicManager:
         logger.info(f"[Channel {self.channel_id}]: Getting Next Song")
 
         next = None
-        if self.streamer.empty:
+        if self.streamer.empty or peek:
             print("Peeking")
             next = self.db.peek(session)
         else:
@@ -203,6 +216,7 @@ class BasicManager:
                 action.run(self)
             except Exception as e:
                 logger.error("process_action error", e)
+                action.send_error(e)
             finally:
                 action.cleanup()
 
@@ -244,24 +258,6 @@ class BasicManager:
 
         return paused_playback
 
-    def skip(self, session, amount=1):
-        """
-        Skip the given amount of songs starting with the currently playing song
-
-        session: sqlalchemy session to use, should not be channelmanager session
-        """
-
-        if session is None:
-            session = self.session
-
-        # update the database by skipping the requested amount (ie just removing)
-        skipped = self.db.skip(amount=amount, session=session)
-
-        # now we tell the streamer there was a skip, so it stops playing the current one
-        # and then asks for new content from the channel manager's get_next function
-        self.streamer.skip()
-        return skipped
-
     def add(self, video, user, session):
         """
         add video to queue.
@@ -293,12 +289,34 @@ class BasicManager:
 
         # already things in the queue
 
-    def remove(self, idx: int, session):
+    def skip(self, session, amount=1) -> list[any]:
+        """
+        Skip the given amount of songs starting with the currently playing song
+
+        session: sqlalchemy session to use, should not be channelmanager session
+        """
+
+        if session is None:
+            session = self.session
+
+        # update the database by skipping the requested amount (ie just removing)
+        skipped = self.db.skip(amount=amount, session=session)
+
+        # now we tell the streamer there was a skip, so it stops playing the current one
+        # and then asks for new content from the channel manager's get_next function
+        self.streamer.skip()
+        return skipped
+
+    def remove(self, idx: int, session) -> list[any]:
         """
         remove the item at the specified position in the queue
 
         0 => currently paying song
         n => song n away from the top of the queue
         """
+        if idx == 0:
+            # preform a skip instead
+            return self.skip(session)
 
-        return self.db.remove(idx=idx, session=self.session)
+        # not playing so we dont need any fancy logic
+        return [self.db.remove(idx=idx, session=self.session)]

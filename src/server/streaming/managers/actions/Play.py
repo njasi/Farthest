@@ -21,32 +21,31 @@ class Play(ChannelAction):
         started_playback = chan.play()
         curr = chan.get_current(session=self.session)
 
-        message = ""
         if curr is None:
-            message = (
-                "The queue is empty, add items to the queue with /add."
-            )
+            self.text = "The queue is empty, add items to the queue with /add."
         else:
             details = (
-                "<a href='{curr.history.video.url}'>{curr.history.video.title}</a> "
+                f"<a href='{curr.history.video.url}'>{curr.history.video.title}</a> "
                 f"({datetime.timedelta(seconds=chan.streamer.get_progress())}/"
                 f"{datetime.timedelta(seconds=curr.history.video.length)})"
             )
             if started_playback:
-                message = (
-                    f"<b>Played 'Song':</b>\n{details})\n\nTo pause playback use /pause"
+                self.text = (
+                    f"<b>Played 'Song':</b>\n{details}\n\nTo pause playback use /pause"
                 )
             else:
-                message = (
+                self.text = (
                     f"<b>Already Playing 'song'</b>\n{details}"
                     "\n\nIf there is no audio maybe the client needs to be refreshed."
                 )
 
-        self.loop.call_soon_threadsafe(
-            asyncio.ensure_future,
-            self.context.bot.send_message(
-                text=message,
-                chat_id=self.update.effective_chat.id,
-                reply_to_message_id=self.update.effective_message.id,
-            ),
-        )
+        self.send()
+
+        # self.loop.call_soon_threadsafe(
+        #     asyncio.ensure_future,
+        #     self.context.bot.send_message(
+        #         text=self.text,
+        #         chat_id=self.update.effective_chat.id,
+        #         reply_to_message_id=self.update.effective_message.id,
+        #     ),
+        # )

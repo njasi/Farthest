@@ -1,6 +1,4 @@
 import logging
-import asyncio
-import datetime
 
 from .ChannelAction import ChannelAction
 from ..BasicManager import BasicManager as ChannelManager
@@ -8,16 +6,7 @@ from ..BasicManager import BasicManager as ChannelManager
 logger = logging.getLogger(__name__)
 
 
-def list_skipped(skipped, bullet="-"):
-    """
-    turn a list of skipped videos into a presentable html formmatted
-    string
-    """
-    for s in skipped:
-        res += [s.telegram_str(bullet=bullet, length=False)]
-
-    return "\n".join(res)
-
+from .Skip import list_skipped
 
 class Skip(ChannelAction):
     """
@@ -40,7 +29,7 @@ class Skip(ChannelAction):
         super(self)
 
     def run(self, chan: ChannelManager):
-        skipped = chan.skip(self.amount)
+        removed = chan.remove(self.amount)
 
         if len(skipped) == 0:
             self.text = (

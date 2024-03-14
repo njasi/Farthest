@@ -43,11 +43,4 @@ class Pause(ChannelAction):
                     "\n\nIf there is no audio maybe the client needs to be refreshed."
                 )
 
-        self.loop.call_soon_threadsafe(
-            asyncio.ensure_future,
-            self.context.bot.send_message(
-                text=message,
-                chat_id=self.update.effective_chat.id,
-                reply_to_message_id=self.update.effective_message.id,
-            ),
-        )
+        self.send()

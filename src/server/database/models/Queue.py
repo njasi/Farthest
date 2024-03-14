@@ -33,9 +33,13 @@ class Queue(Base):
     channel = relationship("Channels")
     channel_id = Column(Integer, ForeignKey("channels.id"))
 
-    def telegram_str(self):
+    def telegram_str(self, bullet=None, length=True):
         """
         Basically to string method, but meant to be used in a list in telegram
+
+        bullet:     str, what to disply instead of the position of the element
+                    if None, display the position as so: [{pos}]
+        length:     if the length part of the string should be displayed
 
         html formatted string™
         """
@@ -48,11 +52,15 @@ class Queue(Base):
             else title
         )
 
-        return (
-            f"[{self.position}]"
-            f"\t<a href='{self.history.video.url}'>{title}</a>"
+        b = f"[{self.position}]" if bullet is None else bullet
+
+        length = (
             f"\t({datetime.timedelta(seconds=self.history.video.length)})"
+            if length
+            else ""
         )
+
+        return b + f"\t<a href='{self.history.video.url}'>{title}</a>" + length
 
     def __str__(self):
         """

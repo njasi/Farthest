@@ -25,7 +25,7 @@ def send_error(error: Exception):
         # just incase there is in issue with imports (mainly setup for during develop)
         # silent fails are annoying...
 
-        logger.error("=" * 30, "\nAn Exception Occured During send_error")
+        logger.error("\nAn Exception Occured During send_error")
         traceback.print_exc()
-        logger.error("=" * 30, "\n While attempting to report the following Exception:")
+        logger.error("\nWhile attempting to report the following Exception:")
         traceback.print_exception(error)
