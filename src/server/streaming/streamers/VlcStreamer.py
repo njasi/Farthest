@@ -4,8 +4,9 @@ import os
 
 logger = logging.getLogger(__name__)
 
+# NOTE: depreciated, dont use unless u update it to the new VideoStreamer class standards
 
-class VideoStreamer:
+class VlcStreamer:
     """
     A wrapper around vlc for streaming video
 
@@ -15,7 +16,7 @@ class VideoStreamer:
     functions (and .empty)
     """
 
-    def __init__(self, host="localhost", port=8080, get_next=None, get_playlist=None):
+    def __init__(self, host="localhost", port=8080, dequeue=None, get_playlist=None):
         self.port = port
         # TODO inspect the quality of the stream with these options
         # f":sout=#transcode{{vcodec=h264,acodec=mp3,ab=128,channels=2,samplerate=44100}}:std{{access=http,mux=ts,dst=:{port}}}"
@@ -37,7 +38,7 @@ class VideoStreamer:
 
         # these manage the currently playing video, get_next is passed from the related channelmanager
         self.empty = False
-        self.get_next = get_next
+        self.dequeue = dequeue
         self.get_playlist = get_playlist
 
         # default animation
@@ -46,12 +47,14 @@ class VideoStreamer:
         # vlc instance setup
         self.vlc = vlc.Instance("--no-xlib")
 
-        # oad in playlist before oading player
+        # load in playlist before oading player
         self.playlist = self.vlc.media_list_new()
         self.update_playlist()
 
-        self.player = None
-        self.load_player()
+        self.player = self.vlc.media_list_player_new()
+        self.player.set_media_list(self.playlist)
+
+        self._attach_events()
 
     def update_playlist(self, skip_current=False):
         """
@@ -62,6 +65,8 @@ class VideoStreamer:
             - if playlist is longer than db, truncate it
         - maintain the last element as the default video
         """
+
+        logger.info("Updating the playlist")
 
         pl = self.get_playlist()
         pc = self.playlist.count()
@@ -90,9 +95,12 @@ class VideoStreamer:
                 self.playlist.remove_index(i)
 
         # add the default screen at the very end
-        # TODO case where its just the default screen, dont remove and regenerate it
-        self.playlist.add_media(self.default_screen)
+        pc = self.playlist.count()
+        self.playlist.insert_media(self._new_media(None, mrl=self.default_screen), pc)
         self.playlist.unlock()
+
+        # if the list was empty before adding the default screen
+        self.empty = pc == 0
 
     def _get_mrl(self, video):
         """
@@ -101,24 +109,36 @@ class VideoStreamer:
 
         return video.download_path if video.downloaded else video.resource_url
 
-    def _new_media(self, video):
+    def _new_media(self, video, mrl=None):
         """
         make a new media instance with the custom
         video.id metadata attached
 
         video:  any, the related db video entry
         """
-
-        media = self.vlc.media_new(self._get_mrl(video))
+        media = None
+        if mrl is not None:
+            media = self.vlc.media_new(mrl)
+        else:
+            media = self.vlc.media_new(self._get_mrl(video))
+            # media.set_meta("title", video.title)
+            # media.save_meta("title")
         media.add_option(self.options)
         return media
 
-    def load_player(self):
-        self.player = self.vlc.media_list_player_new()
-        # TODO check if this needs to be updated
-        self.player.set_media_list(self.playlist)
+    def _playlist_str(self):
+        res = []
 
-    def attach_events(self):
+        self.playlist.lock()
+        for i in range(self.playlist.count()):
+
+            curr = self.playlist.item_at_index(i)
+
+            # title = curr.get_meta(self, "title")
+
+            res += [f"[{i}] {1}"]
+
+    def _attach_events(self):
         """
         Attach events to the vlc player that do the following:
 
@@ -128,11 +148,21 @@ class VideoStreamer:
         """
         self.player.event_manager().event_attach(
             vlc.EventType.MediaPlayerEncounteredError,
-            lambda e: print("streamer error", e),
+            lambda e: logger.error("streamer error:", e),
         )
+
         # self.player.event_manager().event_attach(
-        #     vlc.EventType.MediaPlayerEndReached, self.stream
+        #     vlc.EventType.MediaPlayerEndReached, self.dequeue
         # )
+        def handleNext(event):
+            logger.info("Dequeueing front & updating playlist")
+            self.dequeue()
+            self.update_playlist()
+
+        self.player.event_manager().event_attach(
+            vlc.EventType.MediaListPlayerNextItemSet,
+            handleNext,
+        )
         # self.player.event_manager().event_attach(
         #     vlc.EventType.MediaPlayerEncounteredError, self.stream
         # )
@@ -145,8 +175,6 @@ class VideoStreamer:
         then we start looping the default screen.
         """
         try:
-            logger.info("Updating the playlist")
-
             # update the playlist & start playing it
             self.update_playlist()
             self.player.play()
@@ -172,7 +200,9 @@ class VideoStreamer:
         if self.empty:
             return 0
 
-        return int(self.player.get_media_player().get_length() / 1000)
+        return int(
+            (self.player.get_media_player().get_length() - self.get_progress()) / 1000
+        )
 
     def kill(self):
         """Kill the stream & release the vlc resources"""

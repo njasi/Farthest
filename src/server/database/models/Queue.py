@@ -138,7 +138,7 @@ class QueueInterface:
         """
         Remove the first element of the queue, the one that was currently playing
 
-        for convienence return the new front of the queue
+        return the removed item
         """
         if session is None:
             raise ValueError("Session cannot be None")

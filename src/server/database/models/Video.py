@@ -159,6 +159,14 @@ class Video(Base):
         """
         return session.query(Video).filter_by(id=id).first()
 
+    def get_resource(self):
+        """
+        Return the best resource for the video
+
+        ie download_path preferred over resource_url
+        """
+        return self.downloaded_path if self.downloaded else self.resource_url
+
     def __str__(self):
         """
         General case __str__ method cause im tired of memory addrs in debug

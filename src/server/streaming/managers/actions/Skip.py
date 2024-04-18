@@ -15,7 +15,7 @@ def list_skipped(skipped, bullet="-"):
     """
     res = []
     for s in skipped:
-        res += [s.telegram_str(bullet=bullet, length=False)]
+        res += [s.telegram_str(bullet=bullet, length=False).strip()]
 
     return "\n".join(res)
 

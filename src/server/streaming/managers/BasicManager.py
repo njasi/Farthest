@@ -5,7 +5,7 @@ import logging
 from queue import Queue
 
 from database import QueueInterface, Session, History
-from ..VideoStreamer import VideoStreamer
+from ..streamers.AiortcStreamer import  AiortcStreamer as VideoStreamer
 
 import logging
 
@@ -58,7 +58,7 @@ class BasicManager:
 
         # the streamer instance which will stream all of the vids
         self.streamer = VideoStreamer(
-            host=host, port=port, get_next=self.get_next, get_playlist=self.get_playlist
+            host=host, port=port, get_next=self.dequeue, peek=self.get_current
         )
 
     """
@@ -88,10 +88,9 @@ class BasicManager:
 
         return [q.history.video for q in self.db.get_range(amount=10, session=session)]
 
-    def get_next(self, session=None, peek=False):
+    def dequeue(self, event=None, session=None):
         """
-        get the next element out of the queue,
-        while also removing the front
+        dequeue the front of the playlist
         """
 
         if session is None:
@@ -99,19 +98,10 @@ class BasicManager:
             self.session = Session()
             session = self.session
 
-        logger.info(f"[Channel {self.channel_id}]: Getting Next Song")
+        logger.info(f"[Channel {self.channel_id}]: dequeueing")
+        next = self.db.dequeue(session)
 
-        next = None
-        if self.streamer.empty or peek:
-            print("Peeking")
-            next = self.db.peek(session)
-        else:
-            print(f"Dequeueing [{self.channel_id}]")
-
-            # this dequeue returns the new head, so it also does the next element
-            next = self.db.dequeue(session)
-
-        logger.info(f"[Channel {self.channel_id}]: Got Next Song: {next}")
+        # TODO send telegram message here that new one is playing
 
         if next is None:
             return None
