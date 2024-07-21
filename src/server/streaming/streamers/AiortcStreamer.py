@@ -1,11 +1,3 @@
-"""
-A VideoStreamer which uses aiortc to stream with webrtc
-
-- minimal delay ( < 1 second )
-- uses FartherPlayer.py to control the tracks
-
-"""
-
 import json
 import asyncio
 import logging
@@ -17,11 +9,10 @@ from aiortc import RTCPeerConnection, RTCSessionDescription
 from aiortc.rtcrtpsender import RTCRtpSender
 from aiortc.contrib.media import MediaRelay, MediaBlackhole
 
-from .FartherPlayer import FartherPlayer
-from .VideoStreamer import VideoStreamer
+from FartherPlayer import FartherPlayer
 
 
-class AiortcStreamer(VideoStreamer):
+class AIORTC_Streamer:
     """
     A wrapper around aiortc for streaming farther video & audio
     """
@@ -32,12 +23,27 @@ class AiortcStreamer(VideoStreamer):
         port=8080,
         get_next=None,
         peek=None,
-        default_screen="./downloaded/empty.mp4",
     ):
-        super().__init__(host, port, get_next, peek, default_screen)
+        # where to stream to, not applicable for this streamer tbh
+        self.port = port
+        self.host = host
 
+        # player state management
+        self.empty = False
+        self.playing = False
+
+        # interact with the manager:
+        #   - get next from manager queue
+        #   - see the next video
+        self.get_next = get_next
+        self.peek = peek
+
+        # default animation
+        self.default_screen = "./downloaded/amogus.mp4"
+
+        # aiortc specific stuff below
         self.player = FartherPlayer(
-            self.default_screen, decode=True, finish_callback=self._stream_next
+            self.default_screen, decode=True, finish_cb=self._stream_next
         )
         self._relay = MediaRelay()
 
@@ -57,7 +63,7 @@ class AiortcStreamer(VideoStreamer):
             self.player.video
         )
 
-    async def _offer(self, request):
+    async def offer(self, request):
         params = await request.json()
         offer = RTCSessionDescription(sdp=params["sdp"], type=params["type"])
 
@@ -66,7 +72,7 @@ class AiortcStreamer(VideoStreamer):
 
         @pc.on("connectionstatechange")
         async def on_connectionstatechange():
-            print("Connection state is %s" % pc.connectionState)
+            logger.debug("Connection state is %s" % pc.connectionState)
             if pc.connectionState == "failed":
                 await pc.close()
                 self.pcs.discard(pc)
@@ -74,6 +80,7 @@ class AiortcStreamer(VideoStreamer):
         # grab the media source
         audio, video = self._get_tracks()
 
+        # TODO: maybe force a codec on the senders
         if audio:
             audio_sender = pc.addTrack(audio)
         if video:
@@ -95,15 +102,22 @@ class AiortcStreamer(VideoStreamer):
         """
         Start up the player, probably feed it into a mediasink or smth
         """
-        # TODO
 
     def _stream_next(self):
         """
         grab the next song from the queue & stream it
         """
 
-        next = self.get_next()
-        self.stream(media=next)
+        logger.info("Streaming the next media.")
+        try:
+            next = self.get_next()
+            self.stream(media=next)
+        except Exception as e:
+            # log get next error and just stream the default
+
+            logger.error("There was an error getting the next media:")
+            logger.error(e)
+            self.stream()
 
     def stream(self, event=None, media=None) -> None:
         """
@@ -114,7 +128,13 @@ class AiortcStreamer(VideoStreamer):
         """
         try:
             if not media:
-                media = self.peek()
+                try:
+                    media = self.peek()
+                except Exception as e:
+                    # if there was an issue peeking we should probably just
+                    # try to play the default and send an error somewhere
+                    logger.error("There was an error peeking at the next media:")
+                    logger.error(e)
             if media is None:
                 # loop the default content if there is no video to play
                 self.player.set_file(self.default_screen, decode=True, loop=True)
@@ -145,6 +165,16 @@ class AiortcStreamer(VideoStreamer):
 
         return self.player.duration
 
+    def get_remaining(self) -> int:
+        """
+        Return  the number of seconds left in the current video
+        return None if empty, maybe raise an error instead?
+        """
+        if self.empty:
+            return 0
+
+        return int(self.get_length() - self.get_progress())
+
     def time_set(self, time):
         """
         Set the current time to the given time (seconds),
@@ -157,6 +187,11 @@ class AiortcStreamer(VideoStreamer):
 
         self.player.seek(time)
 
+    def time_add(self, amount):
+        """
+        Set time helper
+        """
+        self.time_set(self.get_progress() + amount)
 
     def kill(self):
         """Kill the stream & release any resources"""
@@ -172,7 +207,6 @@ class AiortcStreamer(VideoStreamer):
         if self.empty:
             return False
 
-        # TODO check how this work
         self.stream(None)
 
     def is_playing(self):

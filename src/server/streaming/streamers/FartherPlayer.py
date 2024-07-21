@@ -1,11 +1,3 @@
-"""
-Simple Player for aiortc based off of their MediaPlayer implementation
-
-not a streamer, but the player that the AiortcStreamer will use
-
-a lot of the code is just copy pasted from source and modified where neccessary
-"""
-
 import av
 import cv2
 import time
@@ -192,6 +184,10 @@ def player_worker_demux(
             asyncio.run_coroutine_threadsafe(track._queue.put(packet), loop)
 
 
+
+class MediaStreamEnd(Exception):
+    pass
+
 class FartherPlayer(MediaPlayer):
     """
     An extension of the MediaPlayer class which manages the video & audio tracks
@@ -199,7 +195,7 @@ class FartherPlayer(MediaPlayer):
     most of the mediaplayer stuff is rewritten, just extending it for consistency
     - kinda had to rewrite cause so many things use __vars & mangling is annoying
 
-    would have just used a MediaPlayer instance and manage it here but i needed
+    would have just used a MediaPlayer instance and manage it here, but i needed
     to change the worker threads
     """
 
@@ -354,8 +350,8 @@ class FartherPlayer(MediaPlayer):
                         self.__streams.append(stream)
 
             except Exception as e:
-                traceback.print_exception(e)
                 logger.error(f"FartherPlayer({self.__container.name}) {e}")
+                traceback.print_exception(e)
 
         # no longer empty
         self.empty = False
@@ -434,7 +430,7 @@ class FartherPlayer(MediaPlayer):
             - or it raises MediaStreamError
         """
 
-        logger.info(f"FartherPlayer finished {self.file} {track.kind}")
+        logger.info(f"FartherPlayer finished {self.file} ({track.kind})")
         track.set_track(None)
 
         if track.kind == "audio":
@@ -560,11 +556,11 @@ class FartherTrack:
             # In both situations it makes sense to tell the player that the
             # media is finished. (Farther wise => play next track)
             self._player._finished_track(self)
-            raise e
+            raise MediaStreamEnd
         except Exception as e:
             # other errors should trigger the finished cb too
             self._player._finished_track(self)
-            raise e
+            raise MediaStreamEnd
 
         if frame is None:
             # Otherwise if you're implementing a more reasonable track,
@@ -598,6 +594,7 @@ class FartherTrack:
              manage this by adding the default video instead
 
         """
+        logger.debug("recv empty frame " + self.kind)
         return await self._track_empty.recv()
 
     async def _recv_error(self, error):
@@ -606,6 +603,7 @@ class FartherTrack:
 
         error:  the exception that occured
         """
+        logger.debug("recv error frame")
         return await self._recv_empty()
 
     def _transform(self, frame):
@@ -621,6 +619,7 @@ class FartherTrack:
             if self._player.empty or self._track is None:
                 # if the streamer is empty, or the track is none
                 # we return the empty frame for this track
+                logger.debug("Streamer empty, paying empty frames:")
                 return await self._recv_empty()
             elif not self._player.playing:
                 # if the streamer is not playing we return the paused frame
@@ -629,13 +628,19 @@ class FartherTrack:
 
             # NOTE: PlayerStreamTrack controls the playback rate for us here
             #       assuming transform is quick at least lol
+
             base = await self._recv_base()
             next = self._transform(base)
             self._prev = next
             return next
+        except MediaStreamEnd:
+            # filler for when stream ends (probably used for a frame or two while the new
+            # file is fetched from the streamer and then loaded in the player)
+            logger.debug(f"FartherPlayer({self._player.file}) media ended, playing filler frames.")
+            return await self._recv_empty()
         except Exception as e:
+            logger.error(f"FartherPlayer({self._player.file})")
             traceback.print_exception(e)
-            logger.error(f"FartherPlayer({self._player.file}) {e}")
             return await self._recv_error(e)
 
 

@@ -21,6 +21,8 @@ class Users(Base):
     telegram_id = Column(Integer)
     mute = Column(Boolean, default=False)
     admin = Column(Boolean, default=False)
+    # social credit score lol
+    credit = Column(Integer, default=0)
 
     @staticmethod
     def find_or_create(telegram_id, session=None):
